@@ -1,0 +1,39 @@
+# Claude関連ファイル（git管理対象外）
+claude.md
+CLAUDE.md
+claude.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Docker
+.docker/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ログファイル
+*.log
+
+# テスト
+.pytest_cache/
+.coverage
+htmlcov/
+
+# データベース
+*.db
+*.sqlite
+*.sqlite3
