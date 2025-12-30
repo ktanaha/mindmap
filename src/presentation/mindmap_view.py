@@ -95,7 +95,7 @@ class MindMapView(QGraphicsView):
         """
         # ノードのテキストを描画
         text_item = QGraphicsTextItem(node.text)
-        text_font = QFont("Arial", 13, QFont.Weight.Normal)
+        text_font = QFont("Arial", 16, QFont.Weight.Normal)
         text_item.setFont(text_font)
 
         # 深さに応じてテキスト色を変える
