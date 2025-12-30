@@ -3,9 +3,9 @@
 
 右ペインのマインドマップ表示エリア
 """
-from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsTextItem, QGraphicsLineItem
+from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsTextItem, QGraphicsPathItem
 from PyQt6.QtCore import Qt, QRectF, QPointF
-from PyQt6.QtGui import QPen, QBrush, QColor, QFont, QPainter
+from PyQt6.QtGui import QPen, QBrush, QColor, QFont, QPainter, QPainterPath
 from typing import Optional, Dict, Tuple
 from src.domain.node import Node
 
@@ -134,8 +134,8 @@ class MindMapView(QGraphicsView):
             return 50  # 単一ノードの高さ
 
         # 子ノードの配置
-        horizontal_spacing = 80  # 横方向の間隔（親から子への距離）
-        vertical_spacing = 40    # 縦方向の間隔（兄弟ノード間）- 重ならないように増加
+        horizontal_spacing = 120  # 横方向の間隔（親から子への距離）- 右に広がるように増加
+        vertical_spacing = 40     # 縦方向の間隔（兄弟ノード間）- 重ならないように増加
 
         # 全ての子ノードのサブツリー高さを計算
         child_heights = [self._calculate_subtree_height(child) for child in node.children]
@@ -148,12 +148,35 @@ class MindMapView(QGraphicsView):
             child_x = node_right + horizontal_spacing
             child_center_y = current_y + child_heights[i] / 2
 
-            # 親から子への線を描画
-            line_pen = QPen(QColor(150, 150, 150), 1.5)
-            # 親ノードの右端から子ノードの左端へ
-            self._scene.addLine(node_right + 5, node_center_y,
-                              child_x - 5, child_center_y,
-                              line_pen)
+            # 親から子への曲線を描画（ベジェ曲線）
+            path = QPainterPath()
+            start_x = node_right + 5
+            start_y = node_center_y
+            end_x = child_x - 5
+            end_y = child_center_y
+
+            # ベジェ曲線の制御点を計算（右方向になめらかに曲がるように）
+            # 横方向の距離の半分を制御点の位置として使用
+            control_offset = (end_x - start_x) * 0.5
+
+            # 開始点
+            path.moveTo(start_x, start_y)
+
+            # 3次ベジェ曲線（cubicTo）で滑らかな曲線を描画
+            # 第1制御点: 親ノードから右方向に伸びる
+            # 第2制御点: 子ノードから左方向に伸びる
+            path.cubicTo(
+                start_x + control_offset, start_y,  # 第1制御点
+                end_x - control_offset, end_y,      # 第2制御点
+                end_x, end_y                        # 終点
+            )
+
+            # パスを描画
+            path_item = QGraphicsPathItem(path)
+            path_pen = QPen(QColor(150, 150, 150), 2)
+            path_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            path_item.setPen(path_pen)
+            self._scene.addItem(path_item)
 
             # 子ノードを再帰的に描画
             self._draw_node_horizontal(child, child_x, child_center_y, depth + 1)
