@@ -33,6 +33,7 @@ class SettingsDialog(QDialog):
         self._font_size = 14
         self._font_color = QColor(0, 0, 0)
         self._line_color = QColor(150, 150, 150)
+        self._layout_direction = 0  # 0: 右のみ, 1: 左右交互
 
         self._setup_ui()
 
@@ -89,6 +90,24 @@ class SettingsDialog(QDialog):
 
         line_group.setLayout(line_layout)
         layout.addWidget(line_group)
+
+        # レイアウト設定グループ
+        layout_group = QGroupBox("レイアウト設定")
+        layout_layout = QVBoxLayout()
+
+        self._layout_button_group = QButtonGroup()
+        self._layout_right_only = QRadioButton("右側のみに展開")
+        self._layout_alternate = QRadioButton("左右交互に展開")
+
+        self._layout_button_group.addButton(self._layout_right_only, 0)
+        self._layout_button_group.addButton(self._layout_alternate, 1)
+        self._layout_right_only.setChecked(True)  # デフォルトは右のみ
+
+        layout_layout.addWidget(self._layout_right_only)
+        layout_layout.addWidget(self._layout_alternate)
+
+        layout_group.setLayout(layout_layout)
+        layout.addWidget(layout_group)
 
         # 適用範囲グループ
         scope_group = QGroupBox("適用範囲")
@@ -215,3 +234,25 @@ class SettingsDialog(QDialog):
             0: 全体、1: 選択ノードのみ、2: 選択ノード以下
         """
         return self._scope_button_group.checkedId()
+
+    def set_layout_direction(self, direction: int) -> None:
+        """
+        レイアウト方向を設定する
+
+        Args:
+            direction: 0=右のみ, 1=左右交互
+        """
+        self._layout_direction = direction
+        if direction == 0:
+            self._layout_right_only.setChecked(True)
+        else:
+            self._layout_alternate.setChecked(True)
+
+    def get_layout_direction(self) -> int:
+        """
+        レイアウト方向を取得する
+
+        Returns:
+            0: 右のみ、1: 左右交互
+        """
+        return self._layout_button_group.checkedId()

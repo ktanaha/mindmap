@@ -65,7 +65,8 @@ class MainWindow(QMainWindow):
         self._mindmap_view = MindMapView(
             font_size=self._font_size,
             font_color=self._font_color,
-            line_color=self._line_color
+            line_color=self._line_color,
+            layout_direction=self._layout_direction
         )
         splitter.addWidget(self._mindmap_view)
 
@@ -253,11 +254,15 @@ class MainWindow(QMainWindow):
         line_color_name = self._settings.value("line_color", "#969696", type=str)
         self._line_color = QColor(line_color_name)
 
+        # レイアウト方向の読み込み（デフォルトは右のみ）
+        self._layout_direction = self._settings.value("layout_direction", 0, type=int)
+
     def _save_settings(self) -> None:
         """設定を保存する"""
         self._settings.setValue("font_size", self._font_size)
         self._settings.setValue("font_color", self._font_color.name())
         self._settings.setValue("line_color", self._line_color.name())
+        self._settings.setValue("layout_direction", self._layout_direction)
 
     def _on_settings(self) -> None:
         """設定ダイアログを開く"""
@@ -265,12 +270,14 @@ class MainWindow(QMainWindow):
         dialog.set_font_size(self._font_size)
         dialog.set_font_color(self._font_color)
         dialog.set_line_color(self._line_color)
+        dialog.set_layout_direction(self._layout_direction)
 
         if dialog.exec():
             # 設定を取得
             new_font_size = dialog.get_font_size()
             new_font_color = dialog.get_font_color()
             new_line_color = dialog.get_line_color()
+            new_layout_direction = dialog.get_layout_direction()
             apply_scope = dialog.get_apply_scope()
 
             # 適用範囲に応じて設定を適用
@@ -281,12 +288,14 @@ class MainWindow(QMainWindow):
                 self._font_size = new_font_size
                 self._font_color = new_font_color
                 self._line_color = new_line_color
+                self._layout_direction = new_layout_direction
                 self._save_settings()
 
                 # マインドマップビューのデフォルト設定を更新
                 self._mindmap_view.set_font_size(new_font_size)
                 self._mindmap_view.set_font_color(new_font_color)
                 self._mindmap_view.set_line_color(new_line_color)
+                self._mindmap_view.set_layout_direction(new_layout_direction)
 
             elif apply_scope == 1:
                 # 選択中のノードのみ

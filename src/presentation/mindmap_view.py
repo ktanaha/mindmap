@@ -17,7 +17,7 @@ class MindMapView(QGraphicsView):
     # ノードが付け替えられたときのシグナル
     node_reparented = pyqtSignal(Node, Node)
 
-    def __init__(self, parent=None, font_size: int = 14, font_color: QColor = None, line_color: QColor = None) -> None:
+    def __init__(self, parent=None, font_size: int = 14, font_color: QColor = None, line_color: QColor = None, layout_direction: int = 0) -> None:
         """
         ビューを初期化する
 
@@ -26,6 +26,7 @@ class MindMapView(QGraphicsView):
             font_size: フォントサイズ
             font_color: フォント色
             line_color: 線の色
+            layout_direction: レイアウト方向（0=右のみ, 1=左右交互）
         """
         super().__init__(parent)
         self._scene = QGraphicsScene()
@@ -41,6 +42,7 @@ class MindMapView(QGraphicsView):
         self._font_size = font_size
         self._font_color = font_color if font_color is not None else QColor(0, 0, 0)
         self._line_color = line_color if line_color is not None else QColor(150, 150, 150)
+        self._layout_direction = layout_direction  # 0: 右のみ, 1: 左右交互
 
         # ズームレベル管理
         self._zoom_level = 1.0
@@ -80,24 +82,65 @@ class MindMapView(QGraphicsView):
 
         # 仮想ルートノードの場合は、子ノードたちを最上位として並べて表示
         if root.text == "__virtual_root__":
-            start_x = 100
-            start_y = 100
-            vertical_spacing = 40
+            if self._layout_direction == 0:
+                # 右のみモード：縦に並べる
+                start_x = 100
+                start_y = 100
+                vertical_spacing = 40
 
-            # 各トップレベルノードの高さを計算
-            child_heights = [self._calculate_subtree_height(child) for child in root.children]
-            total_height = sum(child_heights) + vertical_spacing * (len(root.children) - 1)
+                # 各トップレベルノードの高さを計算
+                child_heights = [self._calculate_subtree_height(child, vertical_spacing) for child in root.children]
+                total_height = sum(child_heights) + vertical_spacing * (len(root.children) - 1)
 
-            current_y = start_y
-            for i, child in enumerate(root.children):
-                child_center_y = current_y + child_heights[i] / 2
-                self._draw_node_horizontal(child, start_x, child_center_y, 0)
-                current_y += child_heights[i] + vertical_spacing
+                current_y = start_y
+                for i, child in enumerate(root.children):
+                    child_center_y = current_y + child_heights[i] / 2
+                    self._draw_node_with_direction(child, start_x, child_center_y, 0, direction=1, vertical_spacing=vertical_spacing)
+                    current_y += child_heights[i] + vertical_spacing
+            else:
+                # 左右交互モード：左右に振り分ける
+                center_x = 500
+                start_y = 100
+                vertical_spacing = 80  # 左右で重ならないように間隔を広げる
+
+                # 各トップレベルノードの高さを計算
+                child_heights = [self._calculate_subtree_height(child, vertical_spacing) for child in root.children]
+
+                # 左側と右側に分ける
+                left_children = []
+                right_children = []
+                for i, child in enumerate(root.children):
+                    if i % 2 == 0:
+                        right_children.append((child, child_heights[i]))
+                    else:
+                        left_children.append((child, child_heights[i]))
+
+                # 右側を配置
+                current_y = start_y
+                for child, height in right_children:
+                    child_center_y = current_y + height / 2
+                    self._draw_node_with_direction(child, center_x + 50, child_center_y, 0, direction=1, vertical_spacing=vertical_spacing)
+                    current_y += height + vertical_spacing
+
+                # 左側を配置
+                current_y = start_y
+                for child, height in left_children:
+                    child_center_y = current_y + height / 2
+                    self._draw_node_with_direction(child, center_x - 50, child_center_y, 0, direction=-1, vertical_spacing=vertical_spacing)
+                    current_y += height + vertical_spacing
         else:
             # 通常のルートノードの場合
-            start_x = 100
-            start_y = 300
-            self._draw_node_horizontal(root, start_x, start_y, 0)
+            vertical_spacing = 40  # 通常のノードでは40を使用
+            if self._layout_direction == 0:
+                # 右のみ
+                start_x = 100
+                start_y = 300
+                self._draw_node_with_direction(root, start_x, start_y, 0, direction=1, vertical_spacing=vertical_spacing)
+            else:
+                # 左右交互：ルートを中央に配置
+                start_x = 500
+                start_y = 300
+                self._draw_node_with_direction(root, start_x, start_y, 0, direction=0, vertical_spacing=vertical_spacing)
 
         # 接続線を描画
         self._draw_connections()
@@ -112,41 +155,53 @@ class MindMapView(QGraphicsView):
             items_rect.height() + margin * 2
         )
 
-    def _calculate_subtree_height(self, node: Node) -> float:
+    def _calculate_subtree_height(self, node: Node, vertical_spacing: float = 40) -> float:
         """
         サブツリー全体の高さを計算する
 
         Args:
             node: ノード
+            vertical_spacing: 兄弟ノード間の垂直間隔
 
         Returns:
             サブツリーの高さ
         """
         if not node.children:
-            return 50  # 単一ノードの高さ（テキスト1行分）
+            return 60  # 単一ノードの高さ（テキスト + マージン）
 
-        total_height = 0
-        for child in node.children:
-            total_height += self._calculate_subtree_height(child)
+        # 各子のサブツリー高さを計算
+        child_heights = [self._calculate_subtree_height(child, vertical_spacing) for child in node.children]
 
-        return max(total_height, 50)
+        # 子ノード間の間隔を含めた合計高さ
+        total_height = sum(child_heights) + vertical_spacing * (len(node.children) - 1)
 
-    def _draw_node_horizontal(self, node: Node, x: float, y: float, depth: int) -> float:
+        return max(total_height, 60)
+
+    def _draw_node_with_direction(self, node: Node, x: float, y: float, depth: int, direction: int, vertical_spacing: float = 40) -> float:
         """
-        ノードとその子孫を横方向に再帰的に描画する
+        ノードとその子孫を指定方向に再帰的に描画する
 
         Args:
             node: 描画するノード
-            x: X座標（ノードの左端）
+            x: X座標（direction=1の場合は左端、direction=-1の場合は右端）
             y: Y座標（このノードの中心）
             depth: 階層の深さ
+            direction: 描画方向（1=右、-1=左、0=ルート（子を左右に振り分け））
+            vertical_spacing: 兄弟ノード間の垂直間隔
 
         Returns:
             このサブツリーが占める高さ
         """
         # NodeItemを作成
         node_item = NodeItem(node, depth, self._font_size, self._font_color)
-        node_item.setPos(x, y - node_item.boundingRect().height() / 2)
+
+        # direction=-1（左）の場合は、xからノード幅を引いた位置に配置
+        if direction == -1:
+            node_x = x - node_item.boundingRect().width()
+        else:
+            node_x = x
+
+        node_item.setPos(node_x, y - node_item.boundingRect().height() / 2)
         self._scene.addItem(node_item)
         self._node_items[node.id] = node_item
 
@@ -154,30 +209,41 @@ class MindMapView(QGraphicsView):
         node_item.node_dropped.connect(self._on_node_dropped)
         node_item.node_selected.connect(self._on_node_selected)
 
-        # ノードの右端を計算
-        node_right = x + node_item.boundingRect().width()
-
         # 子ノードを描画
         if not node.children:
             return 50  # 単一ノードの高さ
 
         # 子ノードの配置
         horizontal_spacing = 120  # 横方向の間隔（親から子への距離）
-        vertical_spacing = 40     # 縦方向の間隔（兄弟ノード間）
 
         # 全ての子ノードのサブツリー高さを計算
-        child_heights = [self._calculate_subtree_height(child) for child in node.children]
+        child_heights = [self._calculate_subtree_height(child, vertical_spacing) for child in node.children]
         total_height = sum(child_heights) + vertical_spacing * (len(node.children) - 1)
 
         # 子ノードの開始Y座標（中央揃え）
         current_y = y - total_height / 2
 
         for i, child in enumerate(node.children):
-            child_x = node_right + horizontal_spacing
+            if direction == 0:
+                # ルートノード：子を左右交互に配置
+                child_direction = 1 if i % 2 == 0 else -1
+                if child_direction == 1:
+                    child_x = node_x + node_item.boundingRect().width() + horizontal_spacing
+                else:
+                    child_x = node_x - horizontal_spacing
+            elif direction == 1:
+                # 右方向：通常通り右に配置
+                child_direction = 1
+                child_x = node_x + node_item.boundingRect().width() + horizontal_spacing
+            else:
+                # 左方向：左に配置
+                child_direction = -1
+                child_x = node_x - horizontal_spacing
+
             child_center_y = current_y + child_heights[i] / 2
 
             # 子ノードを再帰的に描画
-            self._draw_node_horizontal(child, child_x, child_center_y, depth + 1)
+            self._draw_node_with_direction(child, child_x, child_center_y, depth + 1, child_direction, vertical_spacing)
 
             # 次の子ノードのY座標
             current_y += child_heights[i] + vertical_spacing
@@ -200,23 +266,44 @@ class MindMapView(QGraphicsView):
             parent_pos = parent_item.scenePos()
             parent_rect = parent_item.boundingRect()
             child_pos = node_item.scenePos()
+            child_rect = node_item.boundingRect()
 
-            # 親ノードの右端と子ノードの左端を接続
-            start_x = parent_pos.x() + parent_rect.width() + 5
-            start_y = parent_pos.y() + parent_rect.height() / 2
-            end_x = child_pos.x() - 5
-            end_y = child_pos.y() + node_item.boundingRect().height() / 2
+            # 子が親の右にあるか左にあるかを判定
+            parent_center_x = parent_pos.x() + parent_rect.width() / 2
+            child_center_x = child_pos.x() + child_rect.width() / 2
+
+            if child_center_x > parent_center_x:
+                # 子が右側：親ノードの右端と子ノードの左端を接続
+                start_x = parent_pos.x() + parent_rect.width() + 5
+                start_y = parent_pos.y() + parent_rect.height() / 2
+                end_x = child_pos.x() - 5
+                end_y = child_pos.y() + child_rect.height() / 2
+            else:
+                # 子が左側：親ノードの左端と子ノードの右端を接続
+                start_x = parent_pos.x() - 5
+                start_y = parent_pos.y() + parent_rect.height() / 2
+                end_x = child_pos.x() + child_rect.width() + 5
+                end_y = child_pos.y() + child_rect.height() / 2
 
             # ベジェ曲線で接続
             path = QPainterPath()
             path.moveTo(start_x, start_y)
 
-            control_offset = (end_x - start_x) * 0.5
-            path.cubicTo(
-                start_x + control_offset, start_y,  # 第1制御点
-                end_x - control_offset, end_y,      # 第2制御点
-                end_x, end_y                        # 終点
-            )
+            control_offset = abs(end_x - start_x) * 0.5
+            if child_center_x > parent_center_x:
+                # 右方向
+                path.cubicTo(
+                    start_x + control_offset, start_y,  # 第1制御点
+                    end_x - control_offset, end_y,      # 第2制御点
+                    end_x, end_y                        # 終点
+                )
+            else:
+                # 左方向
+                path.cubicTo(
+                    start_x - control_offset, start_y,  # 第1制御点
+                    end_x + control_offset, end_y,      # 第2制御点
+                    end_x, end_y                        # 終点
+                )
 
             # パスを描画
             path_item = QGraphicsPathItem(path)
@@ -385,3 +472,12 @@ class MindMapView(QGraphicsView):
             color: 線の色
         """
         self._line_color = color
+
+    def set_layout_direction(self, direction: int) -> None:
+        """
+        レイアウト方向を設定する
+
+        Args:
+            direction: 0=右のみ、1=左右交互
+        """
+        self._layout_direction = direction

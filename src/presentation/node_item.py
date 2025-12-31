@@ -59,14 +59,14 @@ class NodeItem(QGraphicsObject):
         text_font = QFont("Arial", self._font_size, QFont.Weight.Normal)
         self._text_item.setFont(text_font)
         self._text_item.setDefaultTextColor(self._font_color)
-        # boundingRectが(-5, -5)から始まるので、テキストを(5, 5)にオフセット
-        self._text_item.setPos(5, 5)
+        # boundingRectが(-15, -15)から始まるので、テキストを(15, 15)にオフセット
+        self._text_item.setPos(15, 15)
 
         # 下線アイテムを作成
         text_rect = self._text_item.boundingRect()
-        underline_y = text_rect.height() + 2 + 5  # テキストのオフセット分を追加
-        self._underline = QGraphicsLineItem(5, underline_y,
-                                           text_rect.width() + 5, underline_y, self)
+        underline_y = text_rect.height() + 2 + 15  # テキストのオフセット分を追加
+        self._underline = QGraphicsLineItem(15, underline_y,
+                                           text_rect.width() + 15, underline_y, self)
         underline_pen = QPen(self._font_color, 2)
         self._underline.setPen(underline_pen)
 
@@ -88,8 +88,9 @@ class NodeItem(QGraphicsObject):
     def boundingRect(self) -> QRectF:
         """アイテムの境界矩形を返す"""
         text_rect = self._text_item.boundingRect()
-        # 選択枠の余白を含める（adjusted(-5, -5, 5, 5)に対応）
-        return QRectF(-5, -5, text_rect.width() + 10, text_rect.height() + 14)
+        # 選択枠とドラッグ&ドロップ用の余白を含める
+        # 上下左右に15pxの余白を追加して、ドロップ先として認識される範囲を広げる
+        return QRectF(-15, -15, text_rect.width() + 30, text_rect.height() + 34)
 
     def paint(self, painter: QPainter, option, widget=None) -> None:
         """
