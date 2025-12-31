@@ -122,8 +122,10 @@ class NodeItem(QGraphicsObject):
                 self._hover_target.set_highlight(False)
                 target_node = self._hover_target.node
                 self._hover_target = None
-                # シグナルを発火（この時点でシーンが再構築される）
+                # シグナルを発火（この時点でシーンが再構築され、self自身も削除される）
                 self.node_dropped.emit(self._node, target_node)
+                # シグナル発火後は何もしない（self自身が削除されている）
+                return
 
             self.update()
         super().mouseReleaseEvent(event)
