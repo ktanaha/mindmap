@@ -67,8 +67,15 @@ class MindMapView(QGraphicsView):
         # 接続線を描画
         self._draw_connections()
 
-        # シーンのサイズを調整
-        self._scene.setSceneRect(self._scene.itemsBoundingRect())
+        # シーンのサイズを調整（余白を追加）
+        items_rect = self._scene.itemsBoundingRect()
+        margin = 100  # 左右上下の余白
+        self._scene.setSceneRect(
+            items_rect.x() - margin,
+            items_rect.y() - margin,
+            items_rect.width() + margin * 2,
+            items_rect.height() + margin * 2
+        )
 
     def _calculate_subtree_height(self, node: Node) -> float:
         """
