@@ -68,10 +68,26 @@ class MindMapView(QGraphicsView):
         if root is None:
             return
 
-        # 左から右にツリーを描画（ルートノードは左側に配置）
-        start_x = 100
-        start_y = 300
-        self._draw_node_horizontal(root, start_x, start_y, 0)
+        # 仮想ルートノードの場合は、子ノードたちを最上位として並べて表示
+        if root.text == "__virtual_root__":
+            start_x = 100
+            start_y = 100
+            vertical_spacing = 40
+
+            # 各トップレベルノードの高さを計算
+            child_heights = [self._calculate_subtree_height(child) for child in root.children]
+            total_height = sum(child_heights) + vertical_spacing * (len(root.children) - 1)
+
+            current_y = start_y
+            for i, child in enumerate(root.children):
+                child_center_y = current_y + child_heights[i] / 2
+                self._draw_node_horizontal(child, start_x, child_center_y, 0)
+                current_y += child_heights[i] + vertical_spacing
+        else:
+            # 通常のルートノードの場合
+            start_x = 100
+            start_y = 300
+            self._draw_node_horizontal(root, start_x, start_y, 0)
 
         # 接続線を描画
         self._draw_connections()

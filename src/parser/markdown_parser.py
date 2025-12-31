@@ -102,34 +102,68 @@ class MarkdownParser:
         if not items:
             return None
 
-        # 最初の項目をルートとする
-        root_level, root_text = items[0]
-        root = Node(text=root_text)
+        # 最小のインデントレベルを探す
+        min_level = min(level for level, _ in items)
 
-        # スタックで現在の各レベルでの最新ノードを追跡
-        level_stack = {root_level: root}
+        # 最小レベルの項目を集める
+        top_level_items = [(level, text) for level, text in items if level == min_level]
 
-        for level, text in items[1:]:
-            new_node = Node(text=text)
+        # 最上位レベルが複数ある場合、仮想ルートノードを作成
+        if len(top_level_items) > 1:
+            root = Node(text="__virtual_root__")
+            # すべての項目を仮想ルートの下に配置するため、レベルを調整
+            adjusted_items = [(level - min_level, text) for level, text in items]
+            level_stack = {-1: root}  # 仮想ルートをレベル-1に配置
 
-            # 親となるノードを探す（現在のレベルより小さい最大のレベル）
-            parent = self._find_parent(level, level_stack)
+            for level, text in adjusted_items:
+                new_node = Node(text=text)
 
-            if parent:
-                parent.add_child(new_node)
-            else:
-                # 親が見つからない場合はルートの子とする
-                root.add_child(new_node)
+                # 親となるノードを探す
+                parent = self._find_parent(level, level_stack)
 
-            # 現在のレベル以上のレベルをスタックから削除
-            keys_to_remove = [k for k in level_stack.keys() if k >= level]
-            for k in keys_to_remove:
-                del level_stack[k]
+                if parent:
+                    parent.add_child(new_node)
+                else:
+                    root.add_child(new_node)
 
-            # 新しいノードをスタックに追加
-            level_stack[level] = new_node
+                # 現在のレベル以上のレベルをスタックから削除
+                keys_to_remove = [k for k in level_stack.keys() if k >= level]
+                for k in keys_to_remove:
+                    del level_stack[k]
 
-        return root
+                # 新しいノードをスタックに追加
+                level_stack[level] = new_node
+
+            return root
+        else:
+            # 最上位レベルが1つの場合は従来通り
+            root_level, root_text = items[0]
+            root = Node(text=root_text)
+
+            # スタックで現在の各レベルでの最新ノードを追跡
+            level_stack = {root_level: root}
+
+            for level, text in items[1:]:
+                new_node = Node(text=text)
+
+                # 親となるノードを探す（現在のレベルより小さい最大のレベル）
+                parent = self._find_parent(level, level_stack)
+
+                if parent:
+                    parent.add_child(new_node)
+                else:
+                    # 親が見つからない場合はルートの子とする
+                    root.add_child(new_node)
+
+                # 現在のレベル以上のレベルをスタックから削除
+                keys_to_remove = [k for k in level_stack.keys() if k >= level]
+                for k in keys_to_remove:
+                    del level_stack[k]
+
+                # 新しいノードをスタックに追加
+                level_stack[level] = new_node
+
+            return root
 
     def _build_tree(self, headings: List[Tuple[int, str]]) -> Optional[Node]:
         """
@@ -144,35 +178,69 @@ class MarkdownParser:
         if not headings:
             return None
 
-        # 最初の見出しをルートとする
-        root_level, root_text = headings[0]
-        root = Node(text=root_text)
+        # 最小の見出しレベルを探す
+        min_level = min(level for level, _ in headings)
 
-        # スタックで現在の各レベルでの最新ノードを追跡
-        # level -> node のマッピング
-        level_stack = {root_level: root}
+        # 最小レベルの見出しを集める
+        top_level_headings = [(level, text) for level, text in headings if level == min_level]
 
-        for level, text in headings[1:]:
-            new_node = Node(text=text)
+        # 最上位レベルが複数ある場合、仮想ルートノードを作成
+        if len(top_level_headings) > 1:
+            root = Node(text="__virtual_root__")
+            # すべての見出しを仮想ルートの下に配置するため、レベルを調整
+            adjusted_headings = [(level - min_level + 1, text) for level, text in headings]
+            level_stack = {0: root}  # 仮想ルートをレベル0に配置
 
-            # 親となるノードを探す（現在のレベルより小さい最大のレベル）
-            parent = self._find_parent(level, level_stack)
+            for level, text in adjusted_headings:
+                new_node = Node(text=text)
 
-            if parent:
-                parent.add_child(new_node)
-            else:
-                # 親が見つからない場合はルートの子とする
-                root.add_child(new_node)
+                # 親となるノードを探す
+                parent = self._find_parent(level, level_stack)
 
-            # 現在のレベルとそれ以下のレベルをスタックから削除
-            keys_to_remove = [k for k in level_stack.keys() if k >= level]
-            for k in keys_to_remove:
-                del level_stack[k]
+                if parent:
+                    parent.add_child(new_node)
+                else:
+                    root.add_child(new_node)
 
-            # 新しいノードをスタックに追加
-            level_stack[level] = new_node
+                # 現在のレベル以上のレベルをスタックから削除
+                keys_to_remove = [k for k in level_stack.keys() if k >= level]
+                for k in keys_to_remove:
+                    del level_stack[k]
 
-        return root
+                # 新しいノードをスタックに追加
+                level_stack[level] = new_node
+
+            return root
+        else:
+            # 最上位レベルが1つの場合は従来通り
+            root_level, root_text = headings[0]
+            root = Node(text=root_text)
+
+            # スタックで現在の各レベルでの最新ノードを追跡
+            # level -> node のマッピング
+            level_stack = {root_level: root}
+
+            for level, text in headings[1:]:
+                new_node = Node(text=text)
+
+                # 親となるノードを探す（現在のレベルより小さい最大のレベル）
+                parent = self._find_parent(level, level_stack)
+
+                if parent:
+                    parent.add_child(new_node)
+                else:
+                    # 親が見つからない場合はルートの子とする
+                    root.add_child(new_node)
+
+                # 現在のレベルとそれ以下のレベルをスタックから削除
+                keys_to_remove = [k for k in level_stack.keys() if k >= level]
+                for k in keys_to_remove:
+                    del level_stack[k]
+
+                # 新しいノードをスタックに追加
+                level_stack[level] = new_node
+
+            return root
 
     def _find_parent(self, level: int, level_stack: dict) -> Optional[Node]:
         """

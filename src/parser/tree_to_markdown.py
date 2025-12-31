@@ -28,7 +28,14 @@ class TreeToMarkdownConverter:
             return ""
 
         lines: List[str] = []
-        self._convert_node(root, 0, lines)
+
+        # 仮想ルートノードの場合は、子ノードを直接depth 0で変換
+        if root.text == "__virtual_root__":
+            for child in root.children:
+                self._convert_node(child, 0, lines)
+        else:
+            self._convert_node(root, 0, lines)
+
         return "\n".join(lines)
 
     def _convert_node(self, node: Node, depth: int, lines: List[str]) -> None:
