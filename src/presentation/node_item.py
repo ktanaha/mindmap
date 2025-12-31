@@ -31,6 +31,8 @@ class NodeItem(QGraphicsObject):
         self._is_dragging = False
         self._drag_start_pos = None
         self._hover_target: Optional['NodeItem'] = None
+        self._ghost_text: Optional[QGraphicsTextItem] = None
+        self._ghost_underline: Optional[QGraphicsLineItem] = None
 
         # 深さに応じた色設定
         self._colors = [
@@ -95,12 +97,19 @@ class NodeItem(QGraphicsObject):
             self._is_dragging = True
             self._drag_start_pos = event.scenePos()
             self.setOpacity(0.7)  # 半透明化
+
+            # ゴーストアイテム（カーソルに追従する半透明テキスト）を作成
+            self._create_ghost(event.scenePos())
+
             self.update()
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event) -> None:
         """マウス移動イベント"""
         if self._is_dragging:
+            # ゴーストアイテムをカーソル位置に移動
+            self._update_ghost(event.scenePos())
+
             # ドロップ先候補を検出（ノードは動かさない）
             self._update_hover_target(event.scenePos())
         super().mouseMoveEvent(event)
@@ -110,6 +119,9 @@ class NodeItem(QGraphicsObject):
         if event.button() == Qt.MouseButton.LeftButton and self._is_dragging:
             self._is_dragging = False
             self.setOpacity(1.0)  # 不透明に戻す
+
+            # ゴーストアイテムを削除
+            self._remove_ghost()
 
             # ドロップ先がある場合、シグナルを発火
             if self._hover_target is not None:
@@ -183,3 +195,69 @@ class NodeItem(QGraphicsObject):
             self._text_item.setDefaultTextColor(self._colors[color_index])
             self._underline.setPen(QPen(self._colors[color_index], 2))
         self.update()
+
+    def _create_ghost(self, scene_pos) -> None:
+        """
+        ゴーストアイテム（カーソルに追従する半透明テキスト）を作成
+
+        Args:
+            scene_pos: 初期位置（シーン座標）
+        """
+        # ゴーストテキストアイテムを作成
+        self._ghost_text = QGraphicsTextItem(self._node.text)
+        text_font = QFont("Arial", 16, QFont.Weight.Normal)
+        self._ghost_text.setFont(text_font)
+        color_index = min(self._depth, len(self._colors) - 1)
+        ghost_color = QColor(self._colors[color_index])
+        ghost_color.setAlpha(150)  # 半透明
+        self._ghost_text.setDefaultTextColor(ghost_color)
+        self._ghost_text.setZValue(1000)  # 最前面に表示
+
+        # ゴースト下線アイテムを作成
+        text_rect = self._ghost_text.boundingRect()
+        underline_y = text_rect.height() + 2
+        self._ghost_underline = QGraphicsLineItem(0, underline_y,
+                                                  text_rect.width(), underline_y)
+        ghost_pen = QPen(ghost_color, 2)
+        self._ghost_underline.setPen(ghost_pen)
+        self._ghost_underline.setZValue(1000)
+
+        # シーンに追加
+        self.scene().addItem(self._ghost_text)
+        self.scene().addItem(self._ghost_underline)
+
+        # 初期位置を設定
+        self._update_ghost(scene_pos)
+
+    def _update_ghost(self, scene_pos) -> None:
+        """
+        ゴーストアイテムをカーソル位置に移動
+
+        Args:
+            scene_pos: カーソル位置（シーン座標）
+        """
+        if self._ghost_text is not None and self._ghost_underline is not None:
+            # テキストの位置を設定（カーソルの少し右下に表示）
+            offset_x = 10
+            offset_y = 10
+            self._ghost_text.setPos(scene_pos.x() + offset_x, scene_pos.y() + offset_y)
+
+            # 下線の位置を設定
+            text_rect = self._ghost_text.boundingRect()
+            underline_y = scene_pos.y() + offset_y + text_rect.height() + 2
+            self._ghost_underline.setLine(
+                scene_pos.x() + offset_x,
+                underline_y,
+                scene_pos.x() + offset_x + text_rect.width(),
+                underline_y
+            )
+
+    def _remove_ghost(self) -> None:
+        """ゴーストアイテムを削除"""
+        if self._ghost_text is not None:
+            self.scene().removeItem(self._ghost_text)
+            self._ghost_text = None
+
+        if self._ghost_underline is not None:
+            self.scene().removeItem(self._ghost_underline)
+            self._ghost_underline = None
