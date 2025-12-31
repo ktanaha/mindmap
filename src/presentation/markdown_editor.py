@@ -3,6 +3,7 @@ Markdownエディタウィジェット
 
 左ペインのMarkdown編集エリア
 """
+import re
 from PyQt6.QtWidgets import QPlainTextEdit
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QKeyEvent, QTextCursor
@@ -70,6 +71,12 @@ class MarkdownEditor(QPlainTextEdit):
         Args:
             event: キーイベント
         """
+        # Enterキー: 自動リスト継続
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if self._handle_enter_key():
+                event.accept()
+                return
+
         # Tabキー: インデント追加（スペース2つ）
         if event.key() == Qt.Key.Key_Tab:
             cursor = self.textCursor()
@@ -93,6 +100,47 @@ class MarkdownEditor(QPlainTextEdit):
 
         # その他のキーは通常処理
         super().keyPressEvent(event)
+
+    def _handle_enter_key(self) -> bool:
+        """
+        Enterキー押下時の処理（自動リスト継続）
+
+        Returns:
+            True=処理した、False=通常のEnter処理を継続
+        """
+        cursor = self.textCursor()
+
+        # 現在の行のテキストを取得
+        cursor.select(QTextCursor.SelectionType.LineUnderCursor)
+        current_line = cursor.selectedText()
+
+        # カーソルを元の位置に戻す
+        cursor.clearSelection()
+
+        # リストパターン: インデント + "- " または "* "
+        list_pattern = re.match(r'^(\s*)([-*])\s+(.*)$', current_line)
+
+        if list_pattern:
+            indent = list_pattern.group(1)  # インデント部分
+            marker = list_pattern.group(2)  # - または *
+            content = list_pattern.group(3)  # リスト項目の内容
+
+            # 空のリスト項目の場合（"- "のみ）はリストを終了
+            if not content.strip():
+                # 現在の行の"- "を削除して改行
+                cursor.select(QTextCursor.SelectionType.LineUnderCursor)
+                cursor.removeSelectedText()
+                cursor.insertText("\n")
+                return True
+
+            # 通常のリスト項目の場合は次の行に継続
+            cursor.movePosition(QTextCursor.MoveOperation.EndOfLine)
+            cursor.insertText(f"\n{indent}{marker} ")
+            self.setTextCursor(cursor)
+            return True
+
+        # リスト項目でない場合は通常のEnter処理
+        return False
 
     def _indent_selected_lines(self, cursor: QTextCursor, indent: bool) -> None:
         """
