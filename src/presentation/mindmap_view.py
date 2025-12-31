@@ -3,7 +3,7 @@
 
 右ペインのマインドマップ表示エリア
 """
-from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsTextItem, QGraphicsPathItem
+from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsTextItem, QGraphicsPathItem, QGraphicsLineItem
 from PyQt6.QtCore import Qt, QRectF, QPointF
 from PyQt6.QtGui import QPen, QBrush, QColor, QFont, QPainter, QPainterPath
 from typing import Optional, Dict, Tuple
