@@ -15,7 +15,6 @@ from src.parser.markdown_parser import MarkdownParser
 from src.parser.tree_to_markdown import TreeToMarkdownConverter
 from src.domain.mindmap import MindMap
 from src.domain.node import Node
-import json
 from pathlib import Path
 
 
@@ -171,14 +170,13 @@ class MainWindow(QMainWindow):
             self,
             "ファイルを開く",
             "",
-            "JSON Files (*.json);;All Files (*)"
+            "Markdown Files (*.md);;All Files (*)"
         )
 
         if file_path:
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    markdown_text = data.get('markdown', '')
+                    markdown_text = f.read()
                     self._editor.set_text(markdown_text)
                     self._current_file = Path(file_path)
                     self.setWindowTitle(f"MindMap - {self._current_file.name}")
@@ -197,12 +195,17 @@ class MainWindow(QMainWindow):
         file_path, _ = QFileDialog.getSaveFileName(
             self,
             "名前を付けて保存",
-            "",
-            "JSON Files (*.json);;All Files (*)"
+            "untitled.md",
+            "Markdown Files (*.md);;All Files (*)"
         )
 
         if file_path:
-            self._current_file = Path(file_path)
+            # 拡張子がない場合は.mdを追加
+            file_path_obj = Path(file_path)
+            if not file_path_obj.suffix:
+                file_path_obj = file_path_obj.with_suffix('.md')
+
+            self._current_file = file_path_obj
             self._save_to_file(self._current_file)
             self.setWindowTitle(f"MindMap - {self._current_file.name}")
 
@@ -214,11 +217,8 @@ class MainWindow(QMainWindow):
             file_path: 保存先ファイルパス
         """
         try:
-            data = {
-                'markdown': self._editor.get_text(),
-                'title': self._mindmap.title
-            }
+            markdown_text = self._editor.get_text()
             with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
+                f.write(markdown_text)
         except Exception as e:
             QMessageBox.critical(self, "エラー", f"保存できませんでした:\n{e}")
