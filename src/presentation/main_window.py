@@ -64,7 +64,8 @@ class MainWindow(QMainWindow):
         # 右ペイン: マインドマップビュー
         self._mindmap_view = MindMapView(
             font_size=self._font_size,
-            font_color=self._font_color
+            font_color=self._font_color,
+            line_color=self._line_color
         )
         splitter.addWidget(self._mindmap_view)
 
@@ -248,27 +249,77 @@ class MainWindow(QMainWindow):
         color_name = self._settings.value("font_color", "#000000", type=str)
         self._font_color = QColor(color_name)
 
+        # 線の色の読み込み（デフォルトはグレー）
+        line_color_name = self._settings.value("line_color", "#969696", type=str)
+        self._line_color = QColor(line_color_name)
+
     def _save_settings(self) -> None:
         """設定を保存する"""
         self._settings.setValue("font_size", self._font_size)
         self._settings.setValue("font_color", self._font_color.name())
+        self._settings.setValue("line_color", self._line_color.name())
 
     def _on_settings(self) -> None:
         """設定ダイアログを開く"""
         dialog = SettingsDialog(self)
         dialog.set_font_size(self._font_size)
         dialog.set_font_color(self._font_color)
+        dialog.set_line_color(self._line_color)
 
         if dialog.exec():
-            # 設定を更新
-            self._font_size = dialog.get_font_size()
-            self._font_color = dialog.get_font_color()
-            self._save_settings()
+            # 設定を取得
+            new_font_size = dialog.get_font_size()
+            new_font_color = dialog.get_font_color()
+            new_line_color = dialog.get_line_color()
+            apply_scope = dialog.get_apply_scope()
 
-            # マインドマップビューに設定を反映
-            self._mindmap_view.set_font_size(self._font_size)
-            self._mindmap_view.set_font_color(self._font_color)
+            # 適用範囲に応じて設定を適用
+            selected_node = self._mindmap_view.get_selected_node()
+
+            if apply_scope == 0:
+                # 全体に適用
+                self._font_size = new_font_size
+                self._font_color = new_font_color
+                self._line_color = new_line_color
+                self._save_settings()
+
+                # マインドマップビューのデフォルト設定を更新
+                self._mindmap_view.set_font_size(new_font_size)
+                self._mindmap_view.set_font_color(new_font_color)
+                self._mindmap_view.set_line_color(new_line_color)
+
+            elif apply_scope == 1:
+                # 選択中のノードのみ
+                if selected_node is not None:
+                    selected_node.font_size = new_font_size
+                    selected_node.font_color = new_font_color.name()
+                else:
+                    QMessageBox.warning(self, "警告", "ノードが選択されていません")
+                    return
+
+            elif apply_scope == 2:
+                # 選択中のノード以下すべて
+                if selected_node is not None:
+                    self._apply_settings_to_subtree(selected_node, new_font_size, new_font_color.name())
+                else:
+                    QMessageBox.warning(self, "警告", "ノードが選択されていません")
+                    return
 
             # ビューを再描画
             root = self._mindmap.root
             self._mindmap_view.display_tree(root)
+
+    def _apply_settings_to_subtree(self, node: Node, font_size: int, font_color: str) -> None:
+        """
+        ノードとその子孫すべてに設定を適用する
+
+        Args:
+            node: ルートとなるノード
+            font_size: フォントサイズ
+            font_color: フォント色（カラーコード）
+        """
+        node.font_size = font_size
+        node.font_color = font_color
+
+        for child in node.children:
+            self._apply_settings_to_subtree(child, font_size, font_color)

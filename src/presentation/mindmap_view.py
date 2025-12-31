@@ -17,7 +17,7 @@ class MindMapView(QGraphicsView):
     # ノードが付け替えられたときのシグナル
     node_reparented = pyqtSignal(Node, Node)
 
-    def __init__(self, parent=None, font_size: int = 14, font_color: QColor = None) -> None:
+    def __init__(self, parent=None, font_size: int = 14, font_color: QColor = None, line_color: QColor = None) -> None:
         """
         ビューを初期化する
 
@@ -25,6 +25,7 @@ class MindMapView(QGraphicsView):
             parent: 親ウィジェット
             font_size: フォントサイズ
             font_color: フォント色
+            line_color: 線の色
         """
         super().__init__(parent)
         self._scene = QGraphicsScene()
@@ -34,10 +35,12 @@ class MindMapView(QGraphicsView):
         # ノードアイテムを管理
         self._node_items: Dict[str, NodeItem] = {}
         self._root_node: Optional[Node] = None
+        self._selected_node_item: Optional[NodeItem] = None  # 選択中のノード
 
         # フォント設定
         self._font_size = font_size
         self._font_color = font_color if font_color is not None else QColor(0, 0, 0)
+        self._line_color = line_color if line_color is not None else QColor(150, 150, 150)
 
         # ズームレベル管理
         self._zoom_level = 1.0
@@ -69,6 +72,7 @@ class MindMapView(QGraphicsView):
         # シーンをクリア
         self._scene.clear()
         self._node_items.clear()
+        self._selected_node_item = None  # 選択状態もクリア
         self._root_node = root
 
         if root is None:
@@ -146,8 +150,9 @@ class MindMapView(QGraphicsView):
         self._scene.addItem(node_item)
         self._node_items[node.id] = node_item
 
-        # ドロップイベントを接続
+        # イベントを接続
         node_item.node_dropped.connect(self._on_node_dropped)
+        node_item.node_selected.connect(self._on_node_selected)
 
         # ノードの右端を計算
         node_right = x + node_item.boundingRect().width()
@@ -215,7 +220,7 @@ class MindMapView(QGraphicsView):
 
             # パスを描画
             path_item = QGraphicsPathItem(path)
-            path_pen = QPen(QColor(150, 150, 150), 2)
+            path_pen = QPen(self._line_color, 2)
             path_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             path_item.setPen(path_pen)
             path_item.setZValue(-1)  # ノードの背面に配置
@@ -239,6 +244,34 @@ class MindMapView(QGraphicsView):
 
         # 変更をシグナルで通知
         self.node_reparented.emit(dropped_node, target_node)
+
+    def _on_node_selected(self, node_item: NodeItem) -> None:
+        """
+        ノードが選択されたときの処理
+
+        Args:
+            node_item: 選択されたNodeItem
+        """
+        # 前の選択を解除
+        if self._selected_node_item is not None and self._selected_node_item != node_item:
+            self._selected_node_item.set_selected(False)
+
+        # 新しい選択を保存
+        if node_item.is_selected():
+            self._selected_node_item = node_item
+        else:
+            self._selected_node_item = None
+
+    def get_selected_node(self) -> Optional[Node]:
+        """
+        選択中のノードを取得
+
+        Returns:
+            選択中のNode、なければNone
+        """
+        if self._selected_node_item is not None:
+            return self._selected_node_item.node
+        return None
 
     def wheelEvent(self, event) -> None:
         """
@@ -343,3 +376,12 @@ class MindMapView(QGraphicsView):
             color: フォント色
         """
         self._font_color = color
+
+    def set_line_color(self, color: QColor) -> None:
+        """
+        線の色を設定する
+
+        Args:
+            color: 線の色
+        """
+        self._line_color = color

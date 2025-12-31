@@ -5,7 +5,7 @@
 """
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QSpinBox, QColorDialog, QGroupBox
+    QPushButton, QSpinBox, QColorDialog, QGroupBox, QRadioButton, QButtonGroup
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
@@ -27,11 +27,12 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("設定")
         self.setModal(True)
-        self.resize(400, 300)
+        self.resize(450, 450)
 
         # 現在の設定値
         self._font_size = 14
         self._font_color = QColor(0, 0, 0)
+        self._line_color = QColor(150, 150, 150)
 
         self._setup_ui()
 
@@ -70,6 +71,46 @@ class SettingsDialog(QDialog):
         font_group.setLayout(font_layout)
         layout.addWidget(font_group)
 
+        # 線の設定グループ
+        line_group = QGroupBox("線の設定")
+        line_layout = QVBoxLayout()
+
+        # 線の色
+        line_color_layout = QHBoxLayout()
+        line_color_label = QLabel("線の色:")
+        self._line_color_button = QPushButton()
+        self._line_color_button.setFixedSize(100, 30)
+        self._update_line_color_button()
+        self._line_color_button.clicked.connect(self._choose_line_color)
+        line_color_layout.addWidget(line_color_label)
+        line_color_layout.addWidget(self._line_color_button)
+        line_color_layout.addStretch()
+        line_layout.addLayout(line_color_layout)
+
+        line_group.setLayout(line_layout)
+        layout.addWidget(line_group)
+
+        # 適用範囲グループ
+        scope_group = QGroupBox("適用範囲")
+        scope_layout = QVBoxLayout()
+
+        self._scope_button_group = QButtonGroup()
+        self._scope_all = QRadioButton("全体に適用")
+        self._scope_selected = QRadioButton("選択中のノードのみ")
+        self._scope_subtree = QRadioButton("選択中のノード以下すべて")
+
+        self._scope_button_group.addButton(self._scope_all, 0)
+        self._scope_button_group.addButton(self._scope_selected, 1)
+        self._scope_button_group.addButton(self._scope_subtree, 2)
+        self._scope_all.setChecked(True)  # デフォルトは全体
+
+        scope_layout.addWidget(self._scope_all)
+        scope_layout.addWidget(self._scope_selected)
+        scope_layout.addWidget(self._scope_subtree)
+
+        scope_group.setLayout(scope_layout)
+        layout.addWidget(scope_group)
+
         layout.addStretch()
 
         # ボタン
@@ -94,6 +135,19 @@ class SettingsDialog(QDialog):
         """カラーボタンの表示を更新する"""
         self._color_button.setStyleSheet(
             f"background-color: {self._font_color.name()};"
+        )
+
+    def _choose_line_color(self) -> None:
+        """線の色選択ダイアログを表示する"""
+        color = QColorDialog.getColor(self._line_color, self, "線の色を選択")
+        if color.isValid():
+            self._line_color = color
+            self._update_line_color_button()
+
+    def _update_line_color_button(self) -> None:
+        """線の色ボタンの表示を更新する"""
+        self._line_color_button.setStyleSheet(
+            f"background-color: {self._line_color.name()};"
         )
 
     def set_font_size(self, size: int) -> None:
@@ -133,3 +187,31 @@ class SettingsDialog(QDialog):
             フォント色
         """
         return self._font_color
+
+    def set_line_color(self, color: QColor) -> None:
+        """
+        線の色を設定する
+
+        Args:
+            color: 線の色
+        """
+        self._line_color = color
+        self._update_line_color_button()
+
+    def get_line_color(self) -> QColor:
+        """
+        線の色を取得する
+
+        Returns:
+            線の色
+        """
+        return self._line_color
+
+    def get_apply_scope(self) -> int:
+        """
+        適用範囲を取得する
+
+        Returns:
+            0: 全体、1: 選択ノードのみ、2: 選択ノード以下
+        """
+        return self._scope_button_group.checkedId()

@@ -10,18 +10,22 @@ import uuid
 class Node:
     """マインドマップのノード"""
 
-    def __init__(self, text: str) -> None:
+    def __init__(self, text: str, font_size: Optional[int] = None, font_color: Optional[str] = None) -> None:
         """
         ノードを初期化する
 
         Args:
             text: ノードのテキスト内容
+            font_size: フォントサイズ（Noneの場合はデフォルト）
+            font_color: フォント色（Noneの場合はデフォルト、カラーコード文字列）
         """
         self._id: str = str(uuid.uuid4())
         self._text: str = text
         self._parent: Optional[Node] = None
         self._children: List[Node] = []
         self._position: Tuple[int, int] = (0, 0)
+        self._font_size: Optional[int] = font_size
+        self._font_color: Optional[str] = font_color  # カラーコード（例: "#FF0000"）
 
     @property
     def id(self) -> str:
@@ -52,6 +56,26 @@ class Node:
     def position(self) -> Tuple[int, int]:
         """ノードの位置(x, y)を取得"""
         return self._position
+
+    @property
+    def font_size(self) -> Optional[int]:
+        """フォントサイズを取得"""
+        return self._font_size
+
+    @font_size.setter
+    def font_size(self, value: Optional[int]) -> None:
+        """フォントサイズを設定"""
+        self._font_size = value
+
+    @property
+    def font_color(self) -> Optional[str]:
+        """フォント色を取得"""
+        return self._font_color
+
+    @font_color.setter
+    def font_color(self, value: Optional[str]) -> None:
+        """フォント色を設定"""
+        self._font_color = value
 
     def add_child(self, child: "Node") -> None:
         """

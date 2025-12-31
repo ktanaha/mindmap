@@ -15,6 +15,8 @@ class NodeItem(QGraphicsObject):
 
     # ノードがドロップされたときのシグナル (dropped_node, target_node)
     node_dropped = pyqtSignal(Node, Node)
+    # ノードが選択されたときのシグナル
+    node_selected = pyqtSignal(object)  # NodeItemを渡す
 
     def __init__(self, node: Node, depth: int, font_size: int = 14, font_color: QColor = None, parent=None) -> None:
         """
@@ -35,22 +37,36 @@ class NodeItem(QGraphicsObject):
         self._hover_target: Optional['NodeItem'] = None
         self._ghost_text: Optional[QGraphicsTextItem] = None
         self._ghost_underline: Optional[QGraphicsLineItem] = None
+        self._is_selected = False  # 選択状態
 
-        # フォント設定
-        self._font_size = font_size
-        self._font_color = font_color if font_color is not None else QColor(0, 0, 0)
+        # フォント設定（Nodeに設定があればそれを使用、なければデフォルト）
+        self._default_font_size = font_size
+        self._default_font_color = font_color if font_color is not None else QColor(0, 0, 0)
+
+        # ノード個別の設定があれば優先
+        if node.font_size is not None:
+            self._font_size = node.font_size
+        else:
+            self._font_size = self._default_font_size
+
+        if node.font_color is not None:
+            self._font_color = QColor(node.font_color)
+        else:
+            self._font_color = self._default_font_color
 
         # テキストアイテムを作成
         self._text_item = QGraphicsTextItem(node.text, self)
         text_font = QFont("Arial", self._font_size, QFont.Weight.Normal)
         self._text_item.setFont(text_font)
         self._text_item.setDefaultTextColor(self._font_color)
+        # boundingRectが(-5, -5)から始まるので、テキストを(5, 5)にオフセット
+        self._text_item.setPos(5, 5)
 
         # 下線アイテムを作成
         text_rect = self._text_item.boundingRect()
-        underline_y = text_rect.height() + 2
-        self._underline = QGraphicsLineItem(0, underline_y,
-                                           text_rect.width(), underline_y, self)
+        underline_y = text_rect.height() + 2 + 5  # テキストのオフセット分を追加
+        self._underline = QGraphicsLineItem(5, underline_y,
+                                           text_rect.width() + 5, underline_y, self)
         underline_pen = QPen(self._font_color, 2)
         self._underline.setPen(underline_pen)
 
@@ -72,7 +88,8 @@ class NodeItem(QGraphicsObject):
     def boundingRect(self) -> QRectF:
         """アイテムの境界矩形を返す"""
         text_rect = self._text_item.boundingRect()
-        return QRectF(0, 0, text_rect.width(), text_rect.height() + 4)
+        # 選択枠の余白を含める（adjusted(-5, -5, 5, 5)に対応）
+        return QRectF(-5, -5, text_rect.width() + 10, text_rect.height() + 14)
 
     def paint(self, painter: QPainter, option, widget=None) -> None:
         """
@@ -81,12 +98,19 @@ class NodeItem(QGraphicsObject):
         Note: 子アイテム（text_item, underline）が自動的に描画されるため、
         ここでは選択状態やドラッグ中の視覚効果のみ描画
         """
-        if self._is_dragging or self.isSelected():
-            # ドラッグ中または選択中はハイライト表示
-            rect = self.boundingRect()
-            painter.setPen(QPen(QColor(255, 165, 0), 2))  # オレンジ色
-            painter.setBrush(QColor(255, 200, 100, 50))   # 半透明オレンジ
-            painter.drawRect(rect.adjusted(-5, -5, 5, 5))
+        # boundingRectはすでに余白を含んでいる
+        rect = self.boundingRect()
+
+        if self._is_dragging:
+            # ドラッグ中は半透明オレンジ
+            painter.setPen(QPen(QColor(255, 165, 0), 2))
+            painter.setBrush(QColor(255, 200, 100, 50))
+            painter.drawRect(rect)
+        elif self._is_selected:
+            # 選択中は青い枠線と薄い背景
+            painter.setPen(QPen(QColor(50, 150, 250), 3))
+            painter.setBrush(QColor(180, 220, 255, 80))
+            painter.drawRoundedRect(rect, 5, 5)
 
     def mousePressEvent(self, event) -> None:
         """マウス押下イベント"""
@@ -136,6 +160,11 @@ class NodeItem(QGraphicsObject):
             if self._hover_target is not None:
                 self._hover_target.set_highlight(False)
                 self._hover_target = None
+
+            # ドロップしなかった場合は選択状態をトグル
+            if event.button() == Qt.MouseButton.LeftButton:
+                self.set_selected(not self._is_selected)
+                self.node_selected.emit(self)
 
             self.update()
         super().mouseReleaseEvent(event)
@@ -191,13 +220,31 @@ class NodeItem(QGraphicsObject):
         """
         if highlight:
             self._text_item.setDefaultTextColor(QColor(255, 100, 0))  # オレンジ色
-            color_index = min(self._depth, len(self._colors) - 1)
             self._underline.setPen(QPen(QColor(255, 100, 0), 3))  # 太く
         else:
-            color_index = min(self._depth, len(self._colors) - 1)
-            self._text_item.setDefaultTextColor(self._colors[color_index])
-            self._underline.setPen(QPen(self._colors[color_index], 2))
+            # フォント色を元に戻す
+            self._text_item.setDefaultTextColor(self._font_color)
+            self._underline.setPen(QPen(self._font_color, 2))
         self.update()
+
+    def set_selected(self, selected: bool) -> None:
+        """
+        選択状態を設定
+
+        Args:
+            selected: True=選択、False=非選択
+        """
+        self._is_selected = selected
+        self.update()
+
+    def is_selected(self) -> bool:
+        """
+        選択状態を取得
+
+        Returns:
+            選択されている場合True
+        """
+        return self._is_selected
 
     def _create_ghost(self, scene_pos) -> None:
         """

@@ -100,7 +100,31 @@ class MarkdownEditor(QPlainTextEdit):
         # Shift+Tab: インデント削除
         if event.key() == Qt.Key.Key_Backtab:
             cursor = self.textCursor()
-            self._indent_selected_lines(cursor, indent=False)
+
+            # 複数行選択されている場合
+            if cursor.hasSelection():
+                self._indent_selected_lines(cursor, indent=False)
+            else:
+                # 単一行の場合: 行頭のスペース2つを削除
+                original_position = cursor.position()
+                cursor.movePosition(QTextCursor.MoveOperation.StartOfLine)
+                line_start = cursor.position()
+                cursor.movePosition(QTextCursor.MoveOperation.Right,
+                                  QTextCursor.MoveMode.KeepAnchor, 2)
+                selected_text = cursor.selectedText()
+
+                # スペース2つの場合のみ削除
+                if selected_text == "  ":
+                    cursor.removeSelectedText()
+                    # カーソル位置を調整（削除した分左にシフト、ただし行頭より前には行かない）
+                    new_position = max(line_start, original_position - 2)
+                    cursor.setPosition(new_position)
+                else:
+                    # スペース2つでない場合は元の位置に戻す
+                    cursor.setPosition(original_position)
+
+                self.setTextCursor(cursor)
+
             event.accept()
             return
 
