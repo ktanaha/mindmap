@@ -38,6 +38,10 @@ class MindMapView(QGraphicsView):
         self._zoom_min = 0.1
         self._zoom_max = 3.0
 
+        # パン（移動）管理
+        self._is_panning = False
+        self._pan_start_pos = None
+
     def _setup_ui(self) -> None:
         """UIをセットアップする"""
         # 背景色
@@ -242,3 +246,60 @@ class MindMapView(QGraphicsView):
         self.scale(zoom_factor, zoom_factor)
 
         event.accept()
+
+    def mousePressEvent(self, event) -> None:
+        """
+        マウス押下イベントを処理
+
+        Args:
+            event: マウスイベント
+        """
+        # 中クリックまたは右クリックでパン開始
+        if event.button() == Qt.MouseButton.MiddleButton or event.button() == Qt.MouseButton.RightButton:
+            self._is_panning = True
+            self._pan_start_pos = event.pos()
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:
+        """
+        マウス移動イベントを処理
+
+        Args:
+            event: マウスイベント
+        """
+        if self._is_panning and self._pan_start_pos is not None:
+            # パン中：ビューをスクロール
+            delta = event.pos() - self._pan_start_pos
+            self._pan_start_pos = event.pos()
+
+            # 水平・垂直スクロールバーの値を変更
+            self.horizontalScrollBar().setValue(
+                self.horizontalScrollBar().value() - delta.x()
+            )
+            self.verticalScrollBar().setValue(
+                self.verticalScrollBar().value() - delta.y()
+            )
+            event.accept()
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        """
+        マウスリリースイベントを処理
+
+        Args:
+            event: マウスイベント
+        """
+        # パン終了
+        if event.button() == Qt.MouseButton.MiddleButton or event.button() == Qt.MouseButton.RightButton:
+            if self._is_panning:
+                self._is_panning = False
+                self._pan_start_pos = None
+                self.setCursor(Qt.CursorShape.ArrowCursor)
+                event.accept()
+                return
+
+        super().mouseReleaseEvent(event)
