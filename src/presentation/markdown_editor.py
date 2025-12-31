@@ -85,8 +85,14 @@ class MarkdownEditor(QPlainTextEdit):
             if cursor.hasSelection():
                 self._indent_selected_lines(cursor, indent=True)
             else:
-                # 単一行の場合: スペース2つを挿入
+                # 単一行の場合: 行頭にスペース2つを挿入
+                original_position = cursor.position()
+                cursor.movePosition(QTextCursor.MoveOperation.StartOfLine)
+                line_start = cursor.position()
                 cursor.insertText("  ")
+                # カーソル位置を調整（2文字分右にシフト）
+                cursor.setPosition(original_position + 2)
+                self.setTextCursor(cursor)
 
             event.accept()
             return
