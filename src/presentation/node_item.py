@@ -118,9 +118,12 @@ class NodeItem(QGraphicsObject):
 
             # ドロップ先がある場合、シグナルを発火
             if self._hover_target is not None:
-                self.node_dropped.emit(self._node, self._hover_target.node)
+                # 先にハイライトを解除（シグナル発火後にアイテムが削除されるため）
                 self._hover_target.set_highlight(False)
+                target_node = self._hover_target.node
                 self._hover_target = None
+                # シグナルを発火（この時点でシーンが再構築される）
+                self.node_dropped.emit(self._node, target_node)
 
             self.update()
         super().mouseReleaseEvent(event)
