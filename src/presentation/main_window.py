@@ -7,10 +7,11 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QSplitter,
     QMenuBar, QMenu, QFileDialog, QMessageBox
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction
+from PyQt6.QtCore import Qt, QSettings
+from PyQt6.QtGui import QAction, QColor
 from src.presentation.markdown_editor import MarkdownEditor
 from src.presentation.mindmap_view import MindMapView
+from src.presentation.settings_dialog import SettingsDialog
 from src.parser.markdown_parser import MarkdownParser
 from src.parser.tree_to_markdown import TreeToMarkdownConverter
 from src.domain.mindmap import MindMap
@@ -24,6 +25,10 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         """メインウィンドウを初期化する"""
         super().__init__()
+
+        # 設定
+        self._settings = QSettings("MindMap", "MindMapApp")
+        self._load_settings()
 
         # ドメインモデル
         self._mindmap = MindMap()
@@ -57,7 +62,10 @@ class MainWindow(QMainWindow):
         splitter.addWidget(self._editor)
 
         # 右ペイン: マインドマップビュー
-        self._mindmap_view = MindMapView()
+        self._mindmap_view = MindMapView(
+            font_size=self._font_size,
+            font_color=self._font_color
+        )
         splitter.addWidget(self._mindmap_view)
 
         # スプリッターの初期サイズ比率（1:1）
@@ -105,6 +113,14 @@ class MainWindow(QMainWindow):
         exit_action.setShortcut("Ctrl+Q")
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
+
+        # 編集メニュー
+        edit_menu = menubar.addMenu("編集(&E)")
+
+        # 設定
+        settings_action = QAction("設定(&P)...", self)
+        settings_action.triggered.connect(self._on_settings)
+        edit_menu.addAction(settings_action)
 
     def _connect_signals(self) -> None:
         """シグナルを接続する"""
@@ -222,3 +238,37 @@ class MainWindow(QMainWindow):
                 f.write(markdown_text)
         except Exception as e:
             QMessageBox.critical(self, "エラー", f"保存できませんでした:\n{e}")
+
+    def _load_settings(self) -> None:
+        """設定を読み込む"""
+        # デフォルト値
+        self._font_size = self._settings.value("font_size", 14, type=int)
+
+        # 色の読み込み（デフォルトは黒）
+        color_name = self._settings.value("font_color", "#000000", type=str)
+        self._font_color = QColor(color_name)
+
+    def _save_settings(self) -> None:
+        """設定を保存する"""
+        self._settings.setValue("font_size", self._font_size)
+        self._settings.setValue("font_color", self._font_color.name())
+
+    def _on_settings(self) -> None:
+        """設定ダイアログを開く"""
+        dialog = SettingsDialog(self)
+        dialog.set_font_size(self._font_size)
+        dialog.set_font_color(self._font_color)
+
+        if dialog.exec():
+            # 設定を更新
+            self._font_size = dialog.get_font_size()
+            self._font_color = dialog.get_font_color()
+            self._save_settings()
+
+            # マインドマップビューに設定を反映
+            self._mindmap_view.set_font_size(self._font_size)
+            self._mindmap_view.set_font_color(self._font_color)
+
+            # ビューを再描画
+            root = self._mindmap.root
+            self._mindmap_view.display_tree(root)

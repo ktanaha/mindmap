@@ -16,13 +16,15 @@ class NodeItem(QGraphicsObject):
     # ノードがドロップされたときのシグナル (dropped_node, target_node)
     node_dropped = pyqtSignal(Node, Node)
 
-    def __init__(self, node: Node, depth: int, parent=None) -> None:
+    def __init__(self, node: Node, depth: int, font_size: int = 14, font_color: QColor = None, parent=None) -> None:
         """
         ノードアイテムを初期化する
 
         Args:
             node: ドメインモデルのNode
             depth: 階層の深さ
+            font_size: フォントサイズ
+            font_color: フォント色
             parent: 親アイテム
         """
         super().__init__(parent)
@@ -34,27 +36,22 @@ class NodeItem(QGraphicsObject):
         self._ghost_text: Optional[QGraphicsTextItem] = None
         self._ghost_underline: Optional[QGraphicsLineItem] = None
 
-        # 深さに応じた色設定
-        self._colors = [
-            QColor(30, 60, 150),    # 濃い青
-            QColor(50, 90, 180),    # 青
-            QColor(70, 110, 200),   # 薄青
-            QColor(90, 130, 220),   # 更に薄青
-        ]
+        # フォント設定
+        self._font_size = font_size
+        self._font_color = font_color if font_color is not None else QColor(0, 0, 0)
 
         # テキストアイテムを作成
         self._text_item = QGraphicsTextItem(node.text, self)
-        text_font = QFont("Arial", 16, QFont.Weight.Normal)
+        text_font = QFont("Arial", self._font_size, QFont.Weight.Normal)
         self._text_item.setFont(text_font)
-        color_index = min(depth, len(self._colors) - 1)
-        self._text_item.setDefaultTextColor(self._colors[color_index])
+        self._text_item.setDefaultTextColor(self._font_color)
 
         # 下線アイテムを作成
         text_rect = self._text_item.boundingRect()
         underline_y = text_rect.height() + 2
         self._underline = QGraphicsLineItem(0, underline_y,
                                            text_rect.width(), underline_y, self)
-        underline_pen = QPen(self._colors[color_index], 2)
+        underline_pen = QPen(self._font_color, 2)
         self._underline.setPen(underline_pen)
 
         # ドラッグ可能に設定
@@ -211,10 +208,9 @@ class NodeItem(QGraphicsObject):
         """
         # ゴーストテキストアイテムを作成
         self._ghost_text = QGraphicsTextItem(self._node.text)
-        text_font = QFont("Arial", 16, QFont.Weight.Normal)
+        text_font = QFont("Arial", self._font_size, QFont.Weight.Normal)
         self._ghost_text.setFont(text_font)
-        color_index = min(self._depth, len(self._colors) - 1)
-        ghost_color = QColor(self._colors[color_index])
+        ghost_color = QColor(self._font_color)
         ghost_color.setAlpha(150)  # 半透明
         self._ghost_text.setDefaultTextColor(ghost_color)
         self._ghost_text.setZValue(1000)  # 最前面に表示

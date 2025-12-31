@@ -17,12 +17,14 @@ class MindMapView(QGraphicsView):
     # ノードが付け替えられたときのシグナル
     node_reparented = pyqtSignal(Node, Node)
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, parent=None, font_size: int = 14, font_color: QColor = None) -> None:
         """
         ビューを初期化する
 
         Args:
             parent: 親ウィジェット
+            font_size: フォントサイズ
+            font_color: フォント色
         """
         super().__init__(parent)
         self._scene = QGraphicsScene()
@@ -32,6 +34,10 @@ class MindMapView(QGraphicsView):
         # ノードアイテムを管理
         self._node_items: Dict[str, NodeItem] = {}
         self._root_node: Optional[Node] = None
+
+        # フォント設定
+        self._font_size = font_size
+        self._font_color = font_color if font_color is not None else QColor(0, 0, 0)
 
         # ズームレベル管理
         self._zoom_level = 1.0
@@ -135,7 +141,7 @@ class MindMapView(QGraphicsView):
             このサブツリーが占める高さ
         """
         # NodeItemを作成
-        node_item = NodeItem(node, depth)
+        node_item = NodeItem(node, depth, self._font_size, self._font_color)
         node_item.setPos(x, y - node_item.boundingRect().height() / 2)
         self._scene.addItem(node_item)
         self._node_items[node.id] = node_item
@@ -319,3 +325,21 @@ class MindMapView(QGraphicsView):
                 return
 
         super().mouseReleaseEvent(event)
+
+    def set_font_size(self, size: int) -> None:
+        """
+        フォントサイズを設定する
+
+        Args:
+            size: フォントサイズ
+        """
+        self._font_size = size
+
+    def set_font_color(self, color: QColor) -> None:
+        """
+        フォント色を設定する
+
+        Args:
+            color: フォント色
+        """
+        self._font_color = color
