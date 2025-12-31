@@ -116,15 +116,16 @@ class NodeItem(QGraphicsObject):
 
     def mouseReleaseEvent(self, event) -> None:
         """マウスリリースイベント"""
-        if event.button() == Qt.MouseButton.LeftButton and self._is_dragging:
+        # ドラッグ中であれば、どのボタンでも終了処理を行う
+        if self._is_dragging:
             self._is_dragging = False
             self.setOpacity(1.0)  # 不透明に戻す
 
             # ゴーストアイテムを削除
             self._remove_ghost()
 
-            # ドロップ先がある場合、シグナルを発火
-            if self._hover_target is not None:
+            # 左クリックでドロップ先がある場合のみ、シグナルを発火
+            if event.button() == Qt.MouseButton.LeftButton and self._hover_target is not None:
                 # 先にハイライトを解除（シグナル発火後にアイテムが削除されるため）
                 self._hover_target.set_highlight(False)
                 target_node = self._hover_target.node
@@ -133,6 +134,11 @@ class NodeItem(QGraphicsObject):
                 self.node_dropped.emit(self._node, target_node)
                 # シグナル発火後は何もしない（self自身が削除されている）
                 return
+
+            # ドロップしなかった場合はハイライトをクリア
+            if self._hover_target is not None:
+                self._hover_target.set_highlight(False)
+                self._hover_target = None
 
             self.update()
         super().mouseReleaseEvent(event)
@@ -255,9 +261,13 @@ class NodeItem(QGraphicsObject):
     def _remove_ghost(self) -> None:
         """ゴーストアイテムを削除"""
         if self._ghost_text is not None:
-            self.scene().removeItem(self._ghost_text)
+            scene = self.scene()
+            if scene is not None:
+                scene.removeItem(self._ghost_text)
             self._ghost_text = None
 
         if self._ghost_underline is not None:
-            self.scene().removeItem(self._ghost_underline)
+            scene = self.scene()
+            if scene is not None:
+                scene.removeItem(self._ghost_underline)
             self._ghost_underline = None
