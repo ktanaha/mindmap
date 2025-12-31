@@ -12,7 +12,9 @@ from PyQt6.QtGui import QAction
 from src.presentation.markdown_editor import MarkdownEditor
 from src.presentation.mindmap_view import MindMapView
 from src.parser.markdown_parser import MarkdownParser
+from src.parser.tree_to_markdown import TreeToMarkdownConverter
 from src.domain.mindmap import MindMap
+from src.domain.node import Node
 import json
 from pathlib import Path
 
@@ -27,7 +29,9 @@ class MainWindow(QMainWindow):
         # ドメインモデル
         self._mindmap = MindMap()
         self._parser = MarkdownParser()
+        self._converter = TreeToMarkdownConverter()
         self._current_file: Path | None = None
+        self._updating_from_drag = False  # ドラッグ更新中フラグ
 
         # UI初期化
         self._setup_ui()
@@ -108,6 +112,9 @@ class MainWindow(QMainWindow):
         # エディタのテキスト変更時にマインドマップを更新
         self._editor.text_changed.connect(self._on_text_changed)
 
+        # ノードが付け替えられたときにMarkdownを更新
+        self._mindmap_view.node_reparented.connect(self._on_node_reparented)
+
     def _on_text_changed(self, text: str) -> None:
         """
         テキスト変更時の処理
@@ -115,6 +122,10 @@ class MainWindow(QMainWindow):
         Args:
             text: 変更後のテキスト
         """
+        # ドラッグ更新中は無視（無限ループ防止）
+        if self._updating_from_drag:
+            return
+
         # Markdownをパース
         root = self._parser.parse(text)
 
@@ -125,6 +136,27 @@ class MainWindow(QMainWindow):
 
         # ビューを更新
         self._mindmap_view.display_tree(root)
+
+    def _on_node_reparented(self, dropped_node: Node, target_node: Node) -> None:
+        """
+        ノードが付け替えられたときの処理
+
+        Args:
+            dropped_node: ドロップされたノード
+            target_node: ドロップ先のノード
+        """
+        # ドラッグ更新中フラグを設定
+        self._updating_from_drag = True
+
+        # ノードツリーをMarkdownテキストに変換
+        root = self._mindmap.root
+        markdown_text = self._converter.convert(root)
+
+        # エディタを更新
+        self._editor.set_text(markdown_text)
+
+        # フラグをリセット
+        self._updating_from_drag = False
 
     def _on_new(self) -> None:
         """新規作成"""

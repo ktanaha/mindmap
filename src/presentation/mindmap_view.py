@@ -3,15 +3,19 @@
 
 右ペインのマインドマップ表示エリア
 """
-from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsTextItem, QGraphicsPathItem, QGraphicsLineItem
-from PyQt6.QtCore import Qt, QRectF, QPointF
-from PyQt6.QtGui import QPen, QBrush, QColor, QFont, QPainter, QPainterPath
-from typing import Optional, Dict, Tuple
+from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPathItem
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QPainterPath
+from typing import Optional, Dict, Tuple, List
 from src.domain.node import Node
+from src.presentation.node_item import NodeItem
 
 
 class MindMapView(QGraphicsView):
     """マインドマップを表示するビュー"""
+
+    # ノードが付け替えられたときのシグナル
+    node_reparented = pyqtSignal(Node, Node)
 
     def __init__(self, parent=None) -> None:
         """
@@ -25,8 +29,9 @@ class MindMapView(QGraphicsView):
         self.setScene(self._scene)
         self._setup_ui()
 
-        # ノードの表示位置を管理
-        self._node_positions: Dict[str, tuple] = {}
+        # ノードアイテムを管理
+        self._node_items: Dict[str, NodeItem] = {}
+        self._root_node: Optional[Node] = None
 
     def _setup_ui(self) -> None:
         """UIをセットアップする"""
@@ -36,8 +41,8 @@ class MindMapView(QGraphicsView):
         # アンチエイリアス
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # ドラッグモード
-        self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+        # ドラッグモードは無効化（ノードのドラッグを優先）
+        self.setDragMode(QGraphicsView.DragMode.NoDrag)
 
     def display_tree(self, root: Optional[Node]) -> None:
         """
@@ -48,7 +53,8 @@ class MindMapView(QGraphicsView):
         """
         # シーンをクリア
         self._scene.clear()
-        self._node_positions.clear()
+        self._node_items.clear()
+        self._root_node = root
 
         if root is None:
             return
@@ -57,6 +63,9 @@ class MindMapView(QGraphicsView):
         start_x = 100
         start_y = 300
         self._draw_node_horizontal(root, start_x, start_y, 0)
+
+        # 接続線を描画
+        self._draw_connections()
 
         # シーンのサイズを調整
         self._scene.setSceneRect(self._scene.itemsBoundingRect())
@@ -93,49 +102,25 @@ class MindMapView(QGraphicsView):
         Returns:
             このサブツリーが占める高さ
         """
-        # ノードのテキストを描画
-        text_item = QGraphicsTextItem(node.text)
-        text_font = QFont("Arial", 16, QFont.Weight.Normal)
-        text_item.setFont(text_font)
+        # NodeItemを作成
+        node_item = NodeItem(node, depth)
+        node_item.setPos(x, y - node_item.boundingRect().height() / 2)
+        self._scene.addItem(node_item)
+        self._node_items[node.id] = node_item
 
-        # 深さに応じてテキスト色を変える
-        colors = [
-            QColor(30, 60, 150),    # 濃い青
-            QColor(50, 90, 180),    # 青
-            QColor(70, 110, 200),   # 薄青
-            QColor(90, 130, 220),   # 更に薄青
-        ]
-        color_index = min(depth, len(colors) - 1)
-        text_item.setDefaultTextColor(colors[color_index])
+        # ドロップイベントを接続
+        node_item.node_dropped.connect(self._on_node_dropped)
 
-        # テキストの位置を設定（Y座標はテキストの中心がyになるように）
-        text_rect = text_item.boundingRect()
-        text_y = y - text_rect.height() / 2
-        text_item.setPos(x, text_y)
-        self._scene.addItem(text_item)
-
-        # 下線を描画
-        underline_y = text_y + text_rect.height() + 2
-        underline = QGraphicsLineItem(x, underline_y,
-                                      x + text_rect.width(), underline_y)
-        underline_pen = QPen(colors[color_index], 2)
-        underline.setPen(underline_pen)
-        self._scene.addItem(underline)
-
-        # ノードの境界を記録（接続線用）
-        node_right = x + text_rect.width()
-        node_center_y = y
-
-        # 位置を記録
-        self._node_positions[node.id] = (x, y)
+        # ノードの右端を計算
+        node_right = x + node_item.boundingRect().width()
 
         # 子ノードを描画
         if not node.children:
             return 50  # 単一ノードの高さ
 
         # 子ノードの配置
-        horizontal_spacing = 120  # 横方向の間隔（親から子への距離）- 右に広がるように増加
-        vertical_spacing = 40     # 縦方向の間隔（兄弟ノード間）- 重ならないように増加
+        horizontal_spacing = 120  # 横方向の間隔（親から子への距離）
+        vertical_spacing = 40     # 縦方向の間隔（兄弟ノード間）
 
         # 全ての子ノードのサブツリー高さを計算
         child_heights = [self._calculate_subtree_height(child) for child in node.children]
@@ -148,23 +133,42 @@ class MindMapView(QGraphicsView):
             child_x = node_right + horizontal_spacing
             child_center_y = current_y + child_heights[i] / 2
 
-            # 親から子への曲線を描画（ベジェ曲線）
+            # 子ノードを再帰的に描画
+            self._draw_node_horizontal(child, child_x, child_center_y, depth + 1)
+
+            # 次の子ノードのY座標
+            current_y += child_heights[i] + vertical_spacing
+
+        return total_height
+
+    def _draw_connections(self) -> None:
+        """全ノード間の接続線を描画する"""
+        for node_id, node_item in self._node_items.items():
+            node = node_item.node
+            if node.parent is None:
+                continue
+
+            # 親ノードのアイテムを取得
+            parent_item = self._node_items.get(node.parent.id)
+            if parent_item is None:
+                continue
+
+            # 親と子の位置を取得
+            parent_pos = parent_item.scenePos()
+            parent_rect = parent_item.boundingRect()
+            child_pos = node_item.scenePos()
+
+            # 親ノードの右端と子ノードの左端を接続
+            start_x = parent_pos.x() + parent_rect.width() + 5
+            start_y = parent_pos.y() + parent_rect.height() / 2
+            end_x = child_pos.x() - 5
+            end_y = child_pos.y() + node_item.boundingRect().height() / 2
+
+            # ベジェ曲線で接続
             path = QPainterPath()
-            start_x = node_right + 5
-            start_y = node_center_y
-            end_x = child_x - 5
-            end_y = child_center_y
-
-            # ベジェ曲線の制御点を計算（右方向になめらかに曲がるように）
-            # 横方向の距離の半分を制御点の位置として使用
-            control_offset = (end_x - start_x) * 0.5
-
-            # 開始点
             path.moveTo(start_x, start_y)
 
-            # 3次ベジェ曲線（cubicTo）で滑らかな曲線を描画
-            # 第1制御点: 親ノードから右方向に伸びる
-            # 第2制御点: 子ノードから左方向に伸びる
+            control_offset = (end_x - start_x) * 0.5
             path.cubicTo(
                 start_x + control_offset, start_y,  # 第1制御点
                 end_x - control_offset, end_y,      # 第2制御点
@@ -176,12 +180,24 @@ class MindMapView(QGraphicsView):
             path_pen = QPen(QColor(150, 150, 150), 2)
             path_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             path_item.setPen(path_pen)
+            path_item.setZValue(-1)  # ノードの背面に配置
             self._scene.addItem(path_item)
 
-            # 子ノードを再帰的に描画
-            self._draw_node_horizontal(child, child_x, child_center_y, depth + 1)
+    def _on_node_dropped(self, dropped_node: Node, target_node: Node) -> None:
+        """
+        ノードがドロップされたときの処理
 
-            # 次の子ノードのY座標
-            current_y += child_heights[i] + vertical_spacing
+        Args:
+            dropped_node: ドロップされたノード
+            target_node: ドロップ先のノード
+        """
+        # 親子関係を変更
+        if dropped_node.parent is not None:
+            dropped_node.parent.remove_child(dropped_node)
+        target_node.add_child(dropped_node)
 
-        return total_height
+        # ビューを再描画
+        self.display_tree(self._root_node)
+
+        # 変更をシグナルで通知
+        self.node_reparented.emit(dropped_node, target_node)
