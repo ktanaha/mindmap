@@ -4,7 +4,8 @@ Markdownエディタウィジェット
 左ペインのMarkdown編集エリア
 """
 from PyQt6.QtWidgets import QPlainTextEdit
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtGui import QKeyEvent, QTextCursor
 
 
 class MarkdownEditor(QPlainTextEdit):
@@ -61,3 +62,83 @@ class MarkdownEditor(QPlainTextEdit):
             text: 設定するテキスト
         """
         self.setPlainText(text)
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        """
+        キー押下イベントを処理する
+
+        Args:
+            event: キーイベント
+        """
+        # Tabキー: インデント追加（スペース2つ）
+        if event.key() == Qt.Key.Key_Tab:
+            cursor = self.textCursor()
+
+            # 複数行選択されている場合
+            if cursor.hasSelection():
+                self._indent_selected_lines(cursor, indent=True)
+            else:
+                # 単一行の場合: スペース2つを挿入
+                cursor.insertText("  ")
+
+            event.accept()
+            return
+
+        # Shift+Tab: インデント削除
+        if event.key() == Qt.Key.Key_Backtab:
+            cursor = self.textCursor()
+            self._indent_selected_lines(cursor, indent=False)
+            event.accept()
+            return
+
+        # その他のキーは通常処理
+        super().keyPressEvent(event)
+
+    def _indent_selected_lines(self, cursor: QTextCursor, indent: bool) -> None:
+        """
+        選択された行のインデントを追加/削除する
+
+        Args:
+            cursor: テキストカーソル
+            indent: True=インデント追加、False=インデント削除
+        """
+        # 選択範囲の開始・終了位置を取得
+        start = cursor.selectionStart()
+        end = cursor.selectionEnd()
+
+        # カーソルを選択開始位置に移動
+        cursor.setPosition(start)
+        cursor.movePosition(QTextCursor.MoveOperation.StartOfLine)
+
+        # 編集操作を一つのアンドゥ単位にまとめる
+        cursor.beginEditBlock()
+
+        # 選択範囲の各行を処理
+        while cursor.position() <= end:
+            if indent:
+                # インデント追加: 行頭にスペース2つを挿入
+                cursor.insertText("  ")
+                end += 2  # 挿入した分、終了位置を調整
+            else:
+                # インデント削除: 行頭のスペース2つを削除
+                cursor.movePosition(QTextCursor.MoveOperation.StartOfLine)
+                cursor.movePosition(QTextCursor.MoveOperation.Right,
+                                  QTextCursor.MoveMode.KeepAnchor, 2)
+                selected_text = cursor.selectedText()
+
+                # スペース2つの場合のみ削除
+                if selected_text == "  ":
+                    cursor.removeSelectedText()
+                    end -= 2  # 削除した分、終了位置を調整
+                else:
+                    # スペース2つでない場合はカーソルを行末に移動
+                    cursor.clearSelection()
+
+            # 次の行に移動
+            cursor.movePosition(QTextCursor.MoveOperation.EndOfLine)
+            if not cursor.movePosition(QTextCursor.MoveOperation.Down):
+                break
+            cursor.movePosition(QTextCursor.MoveOperation.StartOfLine)
+
+        cursor.endEditBlock()
+        self.setTextCursor(cursor)
