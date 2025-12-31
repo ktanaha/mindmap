@@ -101,12 +101,7 @@ class NodeItem(QGraphicsObject):
     def mouseMoveEvent(self, event) -> None:
         """マウス移動イベント"""
         if self._is_dragging:
-            # ドラッグ中の位置更新
-            delta = event.scenePos() - self._drag_start_pos
-            self.setPos(self.pos() + delta)
-            self._drag_start_pos = event.scenePos()
-
-            # ドロップ先候補を検出
+            # ドロップ先候補を検出（ノードは動かさない）
             self._update_hover_target(event.scenePos())
         super().mouseMoveEvent(event)
 
