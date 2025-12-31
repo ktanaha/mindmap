@@ -33,6 +33,11 @@ class MindMapView(QGraphicsView):
         self._node_items: Dict[str, NodeItem] = {}
         self._root_node: Optional[Node] = None
 
+        # ズームレベル管理
+        self._zoom_level = 1.0
+        self._zoom_min = 0.1
+        self._zoom_max = 3.0
+
     def _setup_ui(self) -> None:
         """UIをセットアップする"""
         # 背景色
@@ -208,3 +213,32 @@ class MindMapView(QGraphicsView):
 
         # 変更をシグナルで通知
         self.node_reparented.emit(dropped_node, target_node)
+
+    def wheelEvent(self, event) -> None:
+        """
+        マウスホイールイベントを処理（拡大縮小）
+
+        Args:
+            event: ホイールイベント
+        """
+        # ホイールの回転量を取得
+        delta = event.angleDelta().y()
+
+        # ズーム倍率を計算（1ノッチで15%の拡大縮小）
+        zoom_factor = 1.15 if delta > 0 else 1 / 1.15
+
+        # 新しいズームレベルを計算
+        new_zoom = self._zoom_level * zoom_factor
+
+        # ズームレベルの範囲制限
+        if new_zoom < self._zoom_min or new_zoom > self._zoom_max:
+            return
+
+        # ズームレベルを更新
+        self._zoom_level = new_zoom
+
+        # マウスカーソル位置を中心に拡大縮小
+        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        self.scale(zoom_factor, zoom_factor)
+
+        event.accept()
