@@ -14,6 +14,8 @@ class MarkdownEditor(QPlainTextEdit):
 
     # テキスト変更時のシグナル
     text_changed = pyqtSignal(str)
+    # カーソル位置変更時のシグナル（行番号を送信）
+    cursor_line_changed = pyqtSignal(int)
 
     def __init__(self, parent=None) -> None:
         """
@@ -41,10 +43,18 @@ class MarkdownEditor(QPlainTextEdit):
         """シグナルを接続する"""
         # テキスト変更時に独自シグナルを発火
         self.textChanged.connect(self._on_text_changed)
+        # カーソル位置変更時にシグナルを発火
+        self.cursorPositionChanged.connect(self._on_cursor_position_changed)
 
     def _on_text_changed(self) -> None:
         """テキスト変更時の処理"""
         self.text_changed.emit(self.toPlainText())
+
+    def _on_cursor_position_changed(self) -> None:
+        """カーソル位置変更時の処理"""
+        cursor = self.textCursor()
+        line_number = cursor.blockNumber()  # 0始まりの行番号
+        self.cursor_line_changed.emit(line_number)
 
     def get_text(self) -> str:
         """

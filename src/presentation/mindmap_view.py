@@ -481,3 +481,24 @@ class MindMapView(QGraphicsView):
             direction: 0=右のみ、1=左右交互
         """
         self._layout_direction = direction
+
+    def center_on_node(self, node: Node) -> None:
+        """
+        指定されたノードを中心に表示する
+
+        Args:
+            node: 中心に表示するノード
+        """
+        # ノードに対応するNodeItemを検索
+        node_item = self._node_items.get(node.id)
+        if node_item is None:
+            return
+
+        # ノードの中心座標を計算
+        node_pos = node_item.scenePos()
+        node_rect = node_item.boundingRect()
+        center_x = node_pos.x() + node_rect.width() / 2
+        center_y = node_pos.y() + node_rect.height() / 2
+
+        # ビューの中心をノードの中心に移動
+        self.centerOn(center_x, center_y)

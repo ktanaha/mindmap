@@ -129,6 +129,9 @@ class MainWindow(QMainWindow):
         # エディタのテキスト変更時にマインドマップを更新
         self._editor.text_changed.connect(self._on_text_changed)
 
+        # カーソル位置変更時に対応するノードを中心に表示
+        self._editor.cursor_line_changed.connect(self._on_cursor_line_changed)
+
         # ノードが付け替えられたときにMarkdownを更新
         self._mindmap_view.node_reparented.connect(self._on_node_reparented)
 
@@ -153,6 +156,19 @@ class MainWindow(QMainWindow):
 
         # ビューを更新
         self._mindmap_view.display_tree(root)
+
+    def _on_cursor_line_changed(self, line_number: int) -> None:
+        """
+        カーソル位置変更時の処理
+
+        Args:
+            line_number: カーソルがある行番号（0始まり）
+        """
+        # 行番号から対応するノードを検索
+        node = self._parser.get_node_by_line(line_number)
+        if node is not None:
+            # ノードを中心に表示
+            self._mindmap_view.center_on_node(node)
 
     def _on_node_reparented(self, dropped_node: Node, target_node: Node) -> None:
         """
