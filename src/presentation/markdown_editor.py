@@ -139,13 +139,16 @@ class MarkdownEditor(QPlainTextEdit):
             True=処理した、False=通常のEnter処理を継続
         """
         cursor = self.textCursor()
+        original_position = cursor.position()
 
-        # 現在の行のテキストを取得
+        # 現在の行のテキストと行の開始位置を取得
+        cursor.movePosition(QTextCursor.MoveOperation.StartOfLine)
+        line_start = cursor.position()
         cursor.select(QTextCursor.SelectionType.LineUnderCursor)
         current_line = cursor.selectedText()
 
         # カーソルを元の位置に戻す
-        cursor.clearSelection()
+        cursor.setPosition(original_position)
 
         # リストパターン: インデント + "- " または "* "
         list_pattern = re.match(r'^(\s*)([-*])\s+(.*)$', current_line)
@@ -155,6 +158,29 @@ class MarkdownEditor(QPlainTextEdit):
             marker = list_pattern.group(2)  # - または *
             content = list_pattern.group(3)  # リスト項目の内容
 
+            # カーソル位置が行内のどこにあるかを計算
+            cursor_offset = original_position - line_start
+            prefix_length = len(indent) + len(marker) + 1  # "  - " の長さ
+
+            # カーソルがリストマーカー部分にある場合
+            if cursor_offset <= prefix_length:
+                # カーソル位置以前のテキストは保持、以降は新しい行へ
+                text_after_cursor = current_line[cursor_offset:]
+
+                # 現在の行のカーソル位置以降を削除
+                cursor.movePosition(QTextCursor.MoveOperation.EndOfLine, QTextCursor.MoveMode.KeepAnchor)
+                cursor.removeSelectedText()
+
+                # 改行して新しいリスト項目を追加
+                cursor.insertText(f"\n{text_after_cursor}")
+                self.setTextCursor(cursor)
+                return True
+
+            # カーソルがコンテンツ部分にある場合
+            # カーソル位置以降のテキストを取得
+            text_before_cursor = current_line[:cursor_offset]
+            text_after_cursor = current_line[cursor_offset:]
+
             # 空のリスト項目の場合（"- "のみ）はリストを終了
             if not content.strip():
                 # 現在の行の"- "を削除して改行
@@ -163,11 +189,21 @@ class MarkdownEditor(QPlainTextEdit):
                 cursor.insertText("\n")
                 return True
 
-            # 通常のリスト項目の場合は次の行に継続
-            cursor.movePosition(QTextCursor.MoveOperation.EndOfLine)
-            cursor.insertText(f"\n{indent}{marker} ")
-            self.setTextCursor(cursor)
-            return True
+            # カーソル位置以降にテキストがある場合、それを新しい行に移動
+            if text_after_cursor:
+                # 現在の行のカーソル位置以降を削除
+                cursor.movePosition(QTextCursor.MoveOperation.EndOfLine, QTextCursor.MoveMode.KeepAnchor)
+                cursor.removeSelectedText()
+
+                # 改行して新しいリスト項目を追加し、カーソル以降のテキストを挿入
+                cursor.insertText(f"\n{indent}{marker} {text_after_cursor}")
+                self.setTextCursor(cursor)
+                return True
+            else:
+                # カーソル位置以降にテキストがない場合は通常のリスト継続
+                cursor.insertText(f"\n{indent}{marker} ")
+                self.setTextCursor(cursor)
+                return True
 
         # リスト項目でない場合は通常のEnter処理
         return False
