@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oyuwaku"
+version = "0.1.0"
+description = "Markdown駆動型マインドマップアプリケーション"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "PyQt6>=6.4.0",
+]
+
+[project.scripts]
+oyuwaku = "main:main"
+
+[tool.setuptools]
+py-modules = ["main"]
+packages = ["src", "src.domain", "src.parser", "src.presentation"]

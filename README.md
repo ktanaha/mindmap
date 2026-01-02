@@ -41,17 +41,33 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### 4. アプリケーションのインストール（推奨）
+
+開発モードでインストールすると、`oyuwaku`コマンドで起動できるようになります。
+
+```bash
+pip install -e .
+```
+
 ## 使い方
 
 ### アプリケーションの起動
 
-**方法1: 起動スクリプトを使用（推奨）**
+**方法1: コマンドとして起動（推奨）**
+
+インストール後は、どこからでも起動できます。
+
+```bash
+oyuwaku
+```
+
+**方法2: 起動スクリプトを使用**
 
 ```bash
 ./run.sh
 ```
 
-**方法2: 直接起動**
+**方法3: 直接起動**
 
 ```bash
 source venv/bin/activate

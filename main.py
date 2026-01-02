@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MindMap Application
+OYUWAKU Application
 
 Markdown駆動型マインドマップアプリケーション
 """
@@ -18,8 +18,8 @@ def main() -> int:
     """
     # QApplicationの作成
     app = QApplication(sys.argv)
-    app.setApplicationName("MindMap")
-    app.setOrganizationName("MindMap")
+    app.setApplicationName("OYUWAKU")
+    app.setOrganizationName("OYUWAKU")
 
     # メインウィンドウの作成と表示
     window = MainWindow()
