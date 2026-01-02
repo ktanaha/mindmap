@@ -3,6 +3,9 @@ claude.md
 CLAUDE.md
 claude.log
 
+# ユーザーファイル
+files/
+
 # Python
 __pycache__/
 *.py[cod]
