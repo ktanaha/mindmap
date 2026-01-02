@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QMenuBar, QMenu, QFileDialog, QMessageBox, QLabel
 )
 from PyQt6.QtCore import Qt, QSettings, QTimer, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QAction, QColor
+from PyQt6.QtGui import QAction, QColor, QIcon
 from src.presentation.markdown_editor import MarkdownEditor
 from src.presentation.mindmap_view import MindMapView
 from src.presentation.settings_dialog import SettingsDialog
@@ -27,7 +27,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         # 設定
-        self._settings = QSettings("MindMap", "MindMapApp")
+        self._settings = QSettings("YUWAKU", "YUWAKUApp")
         self._load_settings()
 
         # ドメインモデル
@@ -51,8 +51,13 @@ class MainWindow(QMainWindow):
 
     def _setup_ui(self) -> None:
         """UIをセットアップする"""
-        self.setWindowTitle("MindMap - Untitled")
+        self.setWindowTitle("YUWAKU - Untitled")
         self.setGeometry(100, 100, 1400, 800)
+
+        # アイコンを設定
+        icon_path = "icon.png"
+        if Path(icon_path).exists():
+            self.setWindowIcon(QIcon(icon_path))
 
         # 中央ウィジェット
         central_widget = QWidget()
@@ -206,7 +211,7 @@ class MainWindow(QMainWindow):
         self._editor.set_text("")
         self._mindmap.clear()
         self._current_file = None
-        self.setWindowTitle("MindMap - Untitled")
+        self.setWindowTitle("YUWAKU - Untitled")
         # 自動保存タイマーを停止（新規作成時は自動保存しない）
         self._autosave_timer.stop()
 
@@ -225,7 +230,7 @@ class MainWindow(QMainWindow):
                     markdown_text = f.read()
                     self._editor.set_text(markdown_text)
                     self._current_file = Path(file_path)
-                    self.setWindowTitle(f"MindMap - {self._current_file.name}")
+                    self.setWindowTitle(f"YUWAKU - {self._current_file.name}")
             except Exception as e:
                 QMessageBox.critical(self, "エラー", f"ファイルを開けませんでした:\n{e}")
 
@@ -253,7 +258,7 @@ class MainWindow(QMainWindow):
 
             self._current_file = file_path_obj
             self._save_to_file(self._current_file)
-            self.setWindowTitle(f"MindMap - {self._current_file.name}")
+            self.setWindowTitle(f"YUWAKU - {self._current_file.name}")
 
     def _save_to_file(self, file_path: Path) -> None:
         """
