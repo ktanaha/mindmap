@@ -99,19 +99,28 @@ class NodeItem(QGraphicsObject):
         Note: 子アイテム（text_item, underline）が自動的に描画されるため、
         ここでは選択状態やドラッグ中の視覚効果のみ描画
         """
-        # boundingRectはすでに余白を含んでいる
-        rect = self.boundingRect()
+        # テキストを囲む矩形を計算（テキストと下線を含む）
+        text_rect = self._text_item.boundingRect()
+        # テキストは(15, 15)の位置にあり、下線は text_rect.height() + 2 + 15 の位置にある
+        # 適度なパディングを持たせてテキストを中心に配置
+        padding = 8
+        content_x = 15 - padding
+        content_y = 15 - padding
+        content_width = text_rect.width() + padding * 2
+        # 下線の位置を考慮した高さ（テキストの高さ + 下線までの余白 + パディング）
+        content_height = text_rect.height() + 4 + padding * 2
+        content_rect = QRectF(content_x, content_y, content_width, content_height)
 
         if self._is_dragging:
             # ドラッグ中は半透明オレンジ
             painter.setPen(QPen(QColor(255, 165, 0), 2))
             painter.setBrush(QColor(255, 200, 100, 50))
-            painter.drawRect(rect)
+            painter.drawRoundedRect(content_rect, 5, 5)
         elif self._is_selected:
             # 選択中は青い枠線と薄い背景
             painter.setPen(QPen(QColor(50, 150, 250), 3))
             painter.setBrush(QColor(180, 220, 255, 80))
-            painter.drawRoundedRect(rect, 5, 5)
+            painter.drawRoundedRect(content_rect, 5, 5)
 
     def mousePressEvent(self, event) -> None:
         """マウス押下イベント"""
