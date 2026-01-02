@@ -43,6 +43,11 @@ class MainWindow(QMainWindow):
         self._autosave_timer.setSingleShot(True)  # 1回のみ実行
         self._autosave_timer.timeout.connect(self._auto_save)
 
+        # 最近開いたファイルのリスト
+        self._recent_files: list[str] = []
+        self._recent_files_actions: list[QAction] = []
+        self._max_recent_files = 10
+
         # UI初期化
         self._setup_ui()
         self._create_menu()
@@ -105,6 +110,10 @@ class MainWindow(QMainWindow):
         open_action.setShortcut("Ctrl+O")
         open_action.triggered.connect(self._on_open)
         file_menu.addAction(open_action)
+
+        # 最近開いたファイル
+        self._recent_files_menu = file_menu.addMenu("最近開いたファイル(&R)")
+        self._update_recent_files_menu()
 
         file_menu.addSeparator()
 
@@ -225,14 +234,25 @@ class MainWindow(QMainWindow):
         )
 
         if file_path:
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    markdown_text = f.read()
-                    self._editor.set_text(markdown_text)
-                    self._current_file = Path(file_path)
-                    self.setWindowTitle(f"OYUWAKU - {self._current_file.name}")
-            except Exception as e:
-                QMessageBox.critical(self, "エラー", f"ファイルを開けませんでした:\n{e}")
+            self._open_file(file_path)
+
+    def _open_file(self, file_path: str) -> None:
+        """
+        指定されたファイルを開く
+
+        Args:
+            file_path: 開くファイルのパス
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                markdown_text = f.read()
+                self._editor.set_text(markdown_text)
+                self._current_file = Path(file_path)
+                self.setWindowTitle(f"OYUWAKU - {self._current_file.name}")
+                # 最近開いたファイルリストに追加
+                self._add_recent_file(file_path)
+        except Exception as e:
+            QMessageBox.critical(self, "エラー", f"ファイルを開けませんでした:\n{e}")
 
     def _on_save(self) -> None:
         """保存"""
@@ -290,12 +310,18 @@ class MainWindow(QMainWindow):
         # レイアウト方向の読み込み（デフォルトは右のみ）
         self._layout_direction = self._settings.value("layout_direction", 0, type=int)
 
+        # 最近開いたファイルの読み込み
+        recent_files = self._settings.value("recent_files", [], type=list)
+        if recent_files:
+            self._recent_files = recent_files
+
     def _save_settings(self) -> None:
         """設定を保存する"""
         self._settings.setValue("font_size", self._font_size)
         self._settings.setValue("font_color", self._font_color.name())
         self._settings.setValue("line_color", self._line_color.name())
         self._settings.setValue("layout_direction", self._layout_direction)
+        self._settings.setValue("recent_files", self._recent_files)
 
     def _on_settings(self) -> None:
         """設定ダイアログを開く"""
@@ -462,3 +488,72 @@ class MainWindow(QMainWindow):
             y = window_height - label_height - 50
 
             self._notification_label.move(x, y)
+
+    def _add_recent_file(self, file_path: str) -> None:
+        """
+        最近開いたファイルリストに追加する
+
+        Args:
+            file_path: ファイルパス
+        """
+        # すでにリストに存在する場合は削除（重複を避けるため）
+        if file_path in self._recent_files:
+            self._recent_files.remove(file_path)
+
+        # リストの先頭に追加
+        self._recent_files.insert(0, file_path)
+
+        # 最大数を超えた場合は古いものを削除
+        if len(self._recent_files) > self._max_recent_files:
+            self._recent_files = self._recent_files[:self._max_recent_files]
+
+        # 設定を保存
+        self._save_settings()
+
+        # メニューを更新
+        self._update_recent_files_menu()
+
+    def _update_recent_files_menu(self) -> None:
+        """最近開いたファイルメニューを更新する"""
+        # 既存のアクションをクリア
+        self._recent_files_menu.clear()
+
+        # ファイルが存在しない場合
+        if not self._recent_files:
+            no_files_action = QAction("（なし）", self)
+            no_files_action.setEnabled(False)
+            self._recent_files_menu.addAction(no_files_action)
+            return
+
+        # 各ファイルのアクションを追加
+        for file_path in self._recent_files:
+            # ファイルが実際に存在するか確認
+            if Path(file_path).exists():
+                # ファイル名のみを表示（フルパスではなく）
+                file_name = Path(file_path).name
+                action = QAction(file_name, self)
+                action.setToolTip(file_path)  # ツールチップにフルパスを表示
+                # ラムダ関数で現在のfile_pathを保持
+                action.triggered.connect(lambda checked, fp=file_path: self._open_recent_file(fp))
+                self._recent_files_menu.addAction(action)
+
+    def _open_recent_file(self, file_path: str) -> None:
+        """
+        最近開いたファイルを開く
+
+        Args:
+            file_path: 開くファイルのパス
+        """
+        if Path(file_path).exists():
+            self._open_file(file_path)
+        else:
+            QMessageBox.warning(
+                self,
+                "警告",
+                f"ファイルが見つかりません:\n{file_path}\n\n最近開いたファイルリストから削除されます。"
+            )
+            # リストから削除
+            if file_path in self._recent_files:
+                self._recent_files.remove(file_path)
+                self._save_settings()
+                self._update_recent_files_menu()
