@@ -37,6 +37,7 @@ class MainWindow(QMainWindow):
         self._converter = TreeToMarkdownConverter()
         self._current_file: Path | None = None
         self._updating_from_drag = False  # ドラッグ更新中フラグ
+        self._has_unsaved_changes = False  # 未保存の変更があるかどうか
 
         # 自動保存タイマー（5秒間操作がない場合に自動保存）
         self._autosave_timer = QTimer(self)
@@ -183,6 +184,9 @@ class MainWindow(QMainWindow):
         # ビューを更新
         self._mindmap_view.display_tree(root)
 
+        # 未保存の変更があることを記録
+        self._has_unsaved_changes = True
+
         # 自動保存タイマーをリセット
         self._reset_autosave_timer()
 
@@ -222,15 +226,24 @@ class MainWindow(QMainWindow):
 
     def _on_new(self) -> None:
         """新規作成"""
+        # 未保存の変更があれば確認
+        if not self._check_unsaved_changes():
+            return
+
         self._editor.set_text("")
         self._mindmap.clear()
         self._current_file = None
+        self._has_unsaved_changes = False
         self.setWindowTitle("OYUWAKU - Untitled")
         # 自動保存タイマーを停止（新規作成時は自動保存しない）
         self._autosave_timer.stop()
 
     def _on_open(self) -> None:
         """ファイルを開く"""
+        # 未保存の変更があれば確認
+        if not self._check_unsaved_changes():
+            return
+
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "ファイルを開く",
@@ -253,6 +266,7 @@ class MainWindow(QMainWindow):
                 markdown_text = f.read()
                 self._editor.set_text(markdown_text)
                 self._current_file = Path(file_path)
+                self._has_unsaved_changes = False
                 self.setWindowTitle(f"OYUWAKU - {self._current_file.name}")
                 # 最近開いたファイルリストに追加
                 self._add_recent_file(file_path)
@@ -298,6 +312,8 @@ class MainWindow(QMainWindow):
             markdown_text = self._editor.get_text()
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(markdown_text)
+            # 未保存フラグをクリア
+            self._has_unsaved_changes = False
             # ログに記録
             self._log_file_action("保存", str(file_path))
         except Exception as e:
@@ -553,6 +569,10 @@ class MainWindow(QMainWindow):
         Args:
             file_path: 開くファイルのパス
         """
+        # 未保存の変更があれば確認
+        if not self._check_unsaved_changes():
+            return
+
         if Path(file_path).exists():
             self._open_file(file_path)
         else:
@@ -602,3 +622,54 @@ class MainWindow(QMainWindow):
         except Exception as e:
             # ログ記録に失敗してもアプリケーションの動作には影響しないようにする
             print(f"ログ記録エラー: {e}")
+
+    def _check_unsaved_changes(self) -> bool:
+        """
+        未保存の変更があるかチェックし、ある場合は保存確認ダイアログを表示
+
+        Returns:
+            True=処理を続行、False=キャンセル
+        """
+        if not self._has_unsaved_changes:
+            return True
+
+        # 保存確認ダイアログを表示
+        reply = QMessageBox.question(
+            self,
+            "未保存の変更",
+            "変更が保存されていません。保存しますか？",
+            QMessageBox.StandardButton.Save |
+            QMessageBox.StandardButton.Discard |
+            QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Save
+        )
+
+        if reply == QMessageBox.StandardButton.Save:
+            # 保存を実行
+            if self._current_file:
+                self._save_to_file(self._current_file)
+                return True
+            else:
+                # 新規ファイルの場合は「名前を付けて保存」
+                self._on_save_as()
+                # 保存がキャンセルされた場合は current_file が None のまま
+                return self._current_file is not None
+        elif reply == QMessageBox.StandardButton.Discard:
+            # 保存せずに続行
+            return True
+        else:
+            # キャンセル
+            return False
+
+    def closeEvent(self, event) -> None:
+        """
+        アプリケーションを閉じるときのイベント
+
+        Args:
+            event: クローズイベント
+        """
+        # 未保存の変更をチェック
+        if self._check_unsaved_changes():
+            event.accept()
+        else:
+            event.ignore()
