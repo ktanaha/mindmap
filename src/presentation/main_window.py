@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QSplitter,
     QMenuBar, QMenu, QFileDialog, QMessageBox
 )
-from PyQt6.QtCore import Qt, QSettings
+from PyQt6.QtCore import Qt, QSettings, QTimer
 from PyQt6.QtGui import QAction, QColor
 from src.presentation.markdown_editor import MarkdownEditor
 from src.presentation.mindmap_view import MindMapView
@@ -36,6 +36,12 @@ class MainWindow(QMainWindow):
         self._converter = TreeToMarkdownConverter()
         self._current_file: Path | None = None
         self._updating_from_drag = False  # ドラッグ更新中フラグ
+
+        # 自動保存タイマー（5秒間操作がない場合に自動保存）
+        self._autosave_timer = QTimer(self)
+        self._autosave_timer.setInterval(5000)  # 5秒
+        self._autosave_timer.setSingleShot(True)  # 1回のみ実行
+        self._autosave_timer.timeout.connect(self._auto_save)
 
         # UI初期化
         self._setup_ui()
@@ -157,6 +163,9 @@ class MainWindow(QMainWindow):
         # ビューを更新
         self._mindmap_view.display_tree(root)
 
+        # 自動保存タイマーをリセット
+        self._reset_autosave_timer()
+
     def _on_cursor_line_changed(self, line_number: int) -> None:
         """
         カーソル位置変更時の処理
@@ -197,6 +206,8 @@ class MainWindow(QMainWindow):
         self._mindmap.clear()
         self._current_file = None
         self.setWindowTitle("MindMap - Untitled")
+        # 自動保存タイマーを停止（新規作成時は自動保存しない）
+        self._autosave_timer.stop()
 
     def _on_open(self) -> None:
         """ファイルを開く"""
@@ -348,3 +359,24 @@ class MainWindow(QMainWindow):
 
         for child in node.children:
             self._apply_settings_to_subtree(child, font_size, font_color)
+
+    def _reset_autosave_timer(self) -> None:
+        """
+        自動保存タイマーをリセットする
+
+        テキストが変更されるたびに呼ばれ、最後の編集から5秒後に自動保存される
+        """
+        # 既存のファイルを開いている場合のみタイマーを開始
+        if self._current_file is not None:
+            self._autosave_timer.stop()
+            self._autosave_timer.start()
+
+    def _auto_save(self) -> None:
+        """
+        自動保存を実行する
+
+        既存のファイルを開いている場合のみ保存される
+        """
+        # 既存のファイルを開いている場合のみ自動保存
+        if self._current_file is not None:
+            self._save_to_file(self._current_file)
