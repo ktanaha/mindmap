@@ -98,13 +98,19 @@ class SettingsDialog(QDialog):
         self._layout_button_group = QButtonGroup()
         self._layout_right_only = QRadioButton("右側のみに展開")
         self._layout_alternate = QRadioButton("左右交互に展開")
+        self._layout_down_only = QRadioButton("下側のみに展開")
+        self._layout_vertical_alternate = QRadioButton("上下交互に展開")
 
         self._layout_button_group.addButton(self._layout_right_only, 0)
         self._layout_button_group.addButton(self._layout_alternate, 1)
+        self._layout_button_group.addButton(self._layout_down_only, 2)
+        self._layout_button_group.addButton(self._layout_vertical_alternate, 3)
         self._layout_right_only.setChecked(True)  # デフォルトは右のみ
 
         layout_layout.addWidget(self._layout_right_only)
         layout_layout.addWidget(self._layout_alternate)
+        layout_layout.addWidget(self._layout_down_only)
+        layout_layout.addWidget(self._layout_vertical_alternate)
 
         layout_group.setLayout(layout_layout)
         layout.addWidget(layout_group)
@@ -240,19 +246,23 @@ class SettingsDialog(QDialog):
         レイアウト方向を設定する
 
         Args:
-            direction: 0=右のみ, 1=左右交互
+            direction: 0=右のみ, 1=左右交互, 2=下のみ, 3=上下交互
         """
         self._layout_direction = direction
         if direction == 0:
             self._layout_right_only.setChecked(True)
-        else:
+        elif direction == 1:
             self._layout_alternate.setChecked(True)
+        elif direction == 2:
+            self._layout_down_only.setChecked(True)
+        else:
+            self._layout_vertical_alternate.setChecked(True)
 
     def get_layout_direction(self) -> int:
         """
         レイアウト方向を取得する
 
         Returns:
-            0: 右のみ、1: 左右交互
+            0: 右のみ、1: 左右交互、2: 下のみ、3: 上下交互
         """
         return self._layout_button_group.checkedId()
