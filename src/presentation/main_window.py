@@ -5,9 +5,9 @@
 """
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QSplitter,
-    QMenuBar, QMenu, QFileDialog, QMessageBox
+    QMenuBar, QMenu, QFileDialog, QMessageBox, QLabel
 )
-from PyQt6.QtCore import Qt, QSettings, QTimer
+from PyQt6.QtCore import Qt, QSettings, QTimer, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QAction, QColor
 from src.presentation.markdown_editor import MarkdownEditor
 from src.presentation.mindmap_view import MindMapView
@@ -47,6 +47,7 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._create_menu()
         self._connect_signals()
+        self._setup_notification()
 
     def _setup_ui(self) -> None:
         """UIをセットアップする"""
@@ -380,3 +381,79 @@ class MainWindow(QMainWindow):
         # 既存のファイルを開いている場合のみ自動保存
         if self._current_file is not None:
             self._save_to_file(self._current_file)
+            # 通知を表示
+            self._show_notification("自動保存しました")
+
+    def _setup_notification(self) -> None:
+        """通知ラベルをセットアップする"""
+        # 通知ラベルを作成
+        self._notification_label = QLabel(self)
+        self._notification_label.setStyleSheet("""
+            QLabel {
+                background-color: rgba(50, 150, 250, 220);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+        """)
+        self._notification_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._notification_label.hide()
+
+        # フェードアウト用のタイマー
+        self._notification_timer = QTimer(self)
+        self._notification_timer.setSingleShot(True)
+        self._notification_timer.timeout.connect(self._hide_notification)
+
+    def _show_notification(self, message: str) -> None:
+        """
+        通知を表示する
+
+        Args:
+            message: 表示するメッセージ
+        """
+        # メッセージを設定
+        self._notification_label.setText(message)
+        self._notification_label.adjustSize()
+
+        # 右下に配置
+        window_width = self.width()
+        window_height = self.height()
+        label_width = self._notification_label.width()
+        label_height = self._notification_label.height()
+
+        x = window_width - label_width - 30
+        y = window_height - label_height - 50
+
+        self._notification_label.move(x, y)
+        self._notification_label.show()
+        self._notification_label.raise_()
+
+        # 2.5秒後に非表示にする
+        self._notification_timer.start(2500)
+
+    def _hide_notification(self) -> None:
+        """通知を非表示にする"""
+        self._notification_label.hide()
+
+    def resizeEvent(self, event) -> None:
+        """
+        ウィンドウのリサイズイベント
+
+        Args:
+            event: リサイズイベント
+        """
+        super().resizeEvent(event)
+
+        # 通知が表示されている場合は位置を更新
+        if self._notification_label.isVisible():
+            window_width = self.width()
+            window_height = self.height()
+            label_width = self._notification_label.width()
+            label_height = self._notification_label.height()
+
+            x = window_width - label_width - 30
+            y = window_height - label_height - 50
+
+            self._notification_label.move(x, y)
