@@ -17,6 +17,7 @@ from src.parser.tree_to_markdown import TreeToMarkdownConverter
 from src.domain.mindmap import MindMap
 from src.domain.node import Node
 from pathlib import Path
+from datetime import datetime
 
 
 class MainWindow(QMainWindow):
@@ -47,6 +48,10 @@ class MainWindow(QMainWindow):
         self._recent_files: list[str] = []
         self._recent_files_actions: list[QAction] = []
         self._max_recent_files = 10
+
+        # ファイル履歴ログ
+        self._log_file_path = Path.home() / ".oyuwaku_file_history.log"
+        self._max_log_entries = 10
 
         # UI初期化
         self._setup_ui()
@@ -251,6 +256,8 @@ class MainWindow(QMainWindow):
                 self.setWindowTitle(f"OYUWAKU - {self._current_file.name}")
                 # 最近開いたファイルリストに追加
                 self._add_recent_file(file_path)
+                # ログに記録
+                self._log_file_action("開く", file_path)
         except Exception as e:
             QMessageBox.critical(self, "エラー", f"ファイルを開けませんでした:\n{e}")
 
@@ -291,6 +298,8 @@ class MainWindow(QMainWindow):
             markdown_text = self._editor.get_text()
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(markdown_text)
+            # ログに記録
+            self._log_file_action("保存", str(file_path))
         except Exception as e:
             QMessageBox.critical(self, "エラー", f"保存できませんでした:\n{e}")
 
@@ -557,3 +566,39 @@ class MainWindow(QMainWindow):
                 self._recent_files.remove(file_path)
                 self._save_settings()
                 self._update_recent_files_menu()
+
+    def _log_file_action(self, action: str, file_path: str) -> None:
+        """
+        ファイル操作をログに記録する
+
+        Args:
+            action: アクション（"開く" または "保存"）
+            file_path: ファイルパス
+        """
+        try:
+            # 現在のタイムスタンプ
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # ログエントリを作成
+            log_entry = f"[{timestamp}] {action}: {file_path}\n"
+
+            # 既存のログを読み込む
+            if self._log_file_path.exists():
+                with open(self._log_file_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+            else:
+                lines = []
+
+            # 新しいエントリを追加
+            lines.append(log_entry)
+
+            # 最大件数を超えた場合は古いものを削除
+            if len(lines) > self._max_log_entries:
+                lines = lines[-self._max_log_entries:]
+
+            # ログファイルに書き込む
+            with open(self._log_file_path, 'w', encoding='utf-8') as f:
+                f.writelines(lines)
+        except Exception as e:
+            # ログ記録に失敗してもアプリケーションの動作には影響しないようにする
+            print(f"ログ記録エラー: {e}")
