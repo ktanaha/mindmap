@@ -16,6 +16,9 @@ venv/
 env/
 ENV/
 .venv
+*.egg-info/
+dist/
+build/
 
 # Docker
 .docker/
