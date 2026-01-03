@@ -49,6 +49,7 @@ class MainWindow(QMainWindow):
         self._recent_files: list[str] = []
         self._recent_files_actions: list[QAction] = []
         self._max_recent_files = 10
+        self._recent_files_path = Path.home() / ".oyuwaku_recent_files.txt"
 
         # ファイル履歴ログ
         self._log_file_path = Path.home() / ".oyuwaku_file_history.log"
@@ -401,10 +402,8 @@ class MainWindow(QMainWindow):
         # ペイン配置の読み込み（デフォルトは左右）
         self._pane_orientation = self._settings.value("pane_orientation", 0, type=int)
 
-        # 最近開いたファイルの読み込み
-        recent_files = self._settings.value("recent_files", [], type=list)
-        if recent_files:
-            self._recent_files = recent_files
+        # 最近開いたファイルの読み込み（テキストファイルから）
+        self._load_recent_files()
 
     def _save_settings(self) -> None:
         """設定を保存する"""
@@ -413,7 +412,6 @@ class MainWindow(QMainWindow):
         self._settings.setValue("line_color", self._line_color.name())
         self._settings.setValue("layout_direction", self._layout_direction)
         self._settings.setValue("pane_orientation", self._pane_orientation)
-        self._settings.setValue("recent_files", self._recent_files)
 
     def _on_settings(self) -> None:
         """設定ダイアログを開く"""
@@ -607,8 +605,8 @@ class MainWindow(QMainWindow):
         if len(self._recent_files) > self._max_recent_files:
             self._recent_files = self._recent_files[:self._max_recent_files]
 
-        # 設定を保存
-        self._save_settings()
+        # テキストファイルに保存
+        self._save_recent_files()
 
         # メニューを更新
         self._update_recent_files_menu()
@@ -659,7 +657,7 @@ class MainWindow(QMainWindow):
             # リストから削除
             if file_path in self._recent_files:
                 self._recent_files.remove(file_path)
-                self._save_settings()
+                self._save_recent_files()
                 self._update_recent_files_menu()
 
     def _log_file_action(self, action: str, file_path: str) -> None:
@@ -776,3 +774,29 @@ class MainWindow(QMainWindow):
 
         # サイズを復元（向きが変わっても比率を保つ）
         self._splitter.setSizes(current_sizes)
+
+    def _load_recent_files(self) -> None:
+        """最近開いたファイルのリストをテキストファイルから読み込む"""
+        try:
+            if self._recent_files_path.exists():
+                with open(self._recent_files_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                    # 各行から改行を除去してリストに追加
+                    self._recent_files = [line.strip() for line in lines if line.strip()]
+                    # 最大数を超えている場合は切り詰める
+                    if len(self._recent_files) > self._max_recent_files:
+                        self._recent_files = self._recent_files[:self._max_recent_files]
+        except Exception as e:
+            # 読み込みエラーが発生してもアプリケーションは続行
+            print(f"最近開いたファイルの読み込みエラー: {e}")
+            self._recent_files = []
+
+    def _save_recent_files(self) -> None:
+        """最近開いたファイルのリストをテキストファイルに保存する"""
+        try:
+            with open(self._recent_files_path, 'w', encoding='utf-8') as f:
+                for file_path in self._recent_files:
+                    f.write(f"{file_path}\n")
+        except Exception as e:
+            # 保存エラーが発生してもアプリケーションは続行
+            print(f"最近開いたファイルの保存エラー: {e}")
