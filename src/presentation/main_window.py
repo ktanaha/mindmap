@@ -398,6 +398,9 @@ class MainWindow(QMainWindow):
         # レイアウト方向の読み込み（デフォルトは右のみ）
         self._layout_direction = self._settings.value("layout_direction", 0, type=int)
 
+        # ペイン配置の読み込み（デフォルトは左右）
+        self._pane_orientation = self._settings.value("pane_orientation", 0, type=int)
+
         # 最近開いたファイルの読み込み
         recent_files = self._settings.value("recent_files", [], type=list)
         if recent_files:
@@ -409,6 +412,7 @@ class MainWindow(QMainWindow):
         self._settings.setValue("font_color", self._font_color.name())
         self._settings.setValue("line_color", self._line_color.name())
         self._settings.setValue("layout_direction", self._layout_direction)
+        self._settings.setValue("pane_orientation", self._pane_orientation)
         self._settings.setValue("recent_files", self._recent_files)
 
     def _on_settings(self) -> None:
@@ -418,6 +422,7 @@ class MainWindow(QMainWindow):
         dialog.set_font_color(self._font_color)
         dialog.set_line_color(self._line_color)
         dialog.set_layout_direction(self._layout_direction)
+        dialog.set_pane_orientation(self._pane_orientation)
 
         if dialog.exec():
             # 設定を取得
@@ -425,6 +430,7 @@ class MainWindow(QMainWindow):
             new_font_color = dialog.get_font_color()
             new_line_color = dialog.get_line_color()
             new_layout_direction = dialog.get_layout_direction()
+            new_pane_orientation = dialog.get_pane_orientation()
             apply_scope = dialog.get_apply_scope()
 
             # 適用範囲に応じて設定を適用
@@ -436,6 +442,12 @@ class MainWindow(QMainWindow):
                 self._font_color = new_font_color
                 self._line_color = new_line_color
                 self._layout_direction = new_layout_direction
+
+                # ペイン配置が変更された場合
+                if self._pane_orientation != new_pane_orientation:
+                    self._pane_orientation = new_pane_orientation
+                    self._update_pane_orientation()
+
                 self._save_settings()
 
                 # マインドマップビューのデフォルト設定を更新
@@ -748,3 +760,19 @@ class MainWindow(QMainWindow):
         # 現在のサイズを保存
         sizes = self._splitter.sizes()
         self._settings.setValue("splitter_sizes", sizes)
+
+    def _update_pane_orientation(self) -> None:
+        """ペイン配置を更新する"""
+        # 現在のスプリッターのサイズを保存
+        current_sizes = self._splitter.sizes()
+
+        # スプリッターの向きを設定
+        if self._pane_orientation == 0:
+            # 左右配置
+            self._splitter.setOrientation(Qt.Orientation.Horizontal)
+        else:
+            # 上下配置
+            self._splitter.setOrientation(Qt.Orientation.Vertical)
+
+        # サイズを復元（向きが変わっても比率を保つ）
+        self._splitter.setSizes(current_sizes)

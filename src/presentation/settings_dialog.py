@@ -91,8 +91,26 @@ class SettingsDialog(QDialog):
         line_group.setLayout(line_layout)
         layout.addWidget(line_group)
 
-        # レイアウト設定グループ
-        layout_group = QGroupBox("レイアウト設定")
+        # ペイン配置設定グループ
+        pane_orientation_group = QGroupBox("ペイン配置")
+        pane_orientation_layout = QVBoxLayout()
+
+        self._pane_orientation_button_group = QButtonGroup()
+        self._pane_horizontal = QRadioButton("左右に配置（エディタ | マインドマップ）")
+        self._pane_vertical = QRadioButton("上下に配置（エディタ上、マインドマップ下）")
+
+        self._pane_orientation_button_group.addButton(self._pane_horizontal, 0)
+        self._pane_orientation_button_group.addButton(self._pane_vertical, 1)
+        self._pane_horizontal.setChecked(True)  # デフォルトは左右
+
+        pane_orientation_layout.addWidget(self._pane_horizontal)
+        pane_orientation_layout.addWidget(self._pane_vertical)
+
+        pane_orientation_group.setLayout(pane_orientation_layout)
+        layout.addWidget(pane_orientation_group)
+
+        # レイアウト設定グループ（マインドマップのノード配置）
+        layout_group = QGroupBox("マインドマップノード配置")
         layout_layout = QVBoxLayout()
 
         self._layout_button_group = QButtonGroup()
@@ -266,3 +284,24 @@ class SettingsDialog(QDialog):
             0: 右のみ、1: 左右交互、2: 下のみ、3: 上下交互
         """
         return self._layout_button_group.checkedId()
+
+    def set_pane_orientation(self, orientation: int) -> None:
+        """
+        ペイン配置を設定する
+
+        Args:
+            orientation: 0=左右、1=上下
+        """
+        if orientation == 0:
+            self._pane_horizontal.setChecked(True)
+        else:
+            self._pane_vertical.setChecked(True)
+
+    def get_pane_orientation(self) -> int:
+        """
+        ペイン配置を取得する
+
+        Returns:
+            0: 左右、1: 上下
+        """
+        return self._pane_orientation_button_group.checkedId()
