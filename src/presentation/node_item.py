@@ -114,7 +114,7 @@ class NodeItem(QGraphicsObject):
 
         # フォーカス状態の背景（一番下に描画）
         if self._is_focused:
-            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setPen(QPen(QColor(255, 100, 100, 180), 2))  # 薄い赤枠
             painter.setBrush(QColor(220, 220, 220, 120))  # 薄いグレー
             painter.drawRoundedRect(content_rect, 5, 5)
 
