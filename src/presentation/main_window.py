@@ -137,6 +137,13 @@ class MainWindow(QMainWindow):
 
         file_menu.addSeparator()
 
+        # PNG形式でエクスポート
+        export_png_action = QAction("PNG形式でエクスポート(&E)...", self)
+        export_png_action.triggered.connect(self._on_export_png)
+        file_menu.addAction(export_png_action)
+
+        file_menu.addSeparator()
+
         # 終了
         exit_action = QAction("終了(&X)", self)
         exit_action.setShortcut("Ctrl+Q")
@@ -318,6 +325,38 @@ class MainWindow(QMainWindow):
             self._log_file_action("保存", str(file_path))
         except Exception as e:
             QMessageBox.critical(self, "エラー", f"保存できませんでした:\n{e}")
+
+    def _on_export_png(self) -> None:
+        """PNG形式でエクスポート"""
+        # ファイル保存ダイアログを表示
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "PNG形式でエクスポート",
+            "mindmap.png",
+            "PNG Files (*.png);;All Files (*)"
+        )
+
+        if file_path:
+            # 拡張子がない場合は.pngを追加
+            file_path_obj = Path(file_path)
+            if not file_path_obj.suffix:
+                file_path_obj = file_path_obj.with_suffix('.png')
+
+            # マインドマップビューからPNGをエクスポート
+            success = self._mindmap_view.export_to_png(str(file_path_obj))
+
+            if success:
+                QMessageBox.information(
+                    self,
+                    "エクスポート完了",
+                    f"マインドマップをPNG形式で保存しました:\n{file_path_obj}"
+                )
+            else:
+                QMessageBox.critical(
+                    self,
+                    "エラー",
+                    "PNG形式でのエクスポートに失敗しました"
+                )
 
     def _load_settings(self) -> None:
         """設定を読み込む"""

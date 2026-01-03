@@ -4,8 +4,8 @@
 右ペインのマインドマップ表示エリア
 """
 from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPathItem
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QPainterPath
+from PyQt6.QtCore import Qt, pyqtSignal, QRectF
+from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QPainterPath, QImage
 from typing import Optional, Dict, Tuple, List
 from src.domain.node import Node
 from src.presentation.node_item import NodeItem
@@ -701,3 +701,45 @@ class MindMapView(QGraphicsView):
 
         # ビューの中心をノードの中心に移動
         self.centerOn(center_x, center_y)
+
+    def export_to_png(self, file_path: str) -> bool:
+        """
+        マインドマップをPNG形式でエクスポートする
+
+        Args:
+            file_path: 保存先ファイルパス
+
+        Returns:
+            成功したらTrue、失敗したらFalse
+        """
+        try:
+            # シーン内のアイテムの境界矩形を取得
+            scene_rect = self._scene.itemsBoundingRect()
+
+            # マージンを追加（見栄えを良くするため）
+            margin = 50
+            scene_rect.adjust(-margin, -margin, margin, margin)
+
+            # QImageを作成（白背景）
+            image = QImage(
+                int(scene_rect.width()),
+                int(scene_rect.height()),
+                QImage.Format.Format_ARGB32
+            )
+            image.fill(Qt.GlobalColor.white)
+
+            # QPainterでシーンをレンダリング
+            painter = QPainter(image)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
+            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+
+            # シーンを描画
+            self._scene.render(painter, QRectF(), scene_rect)
+            painter.end()
+
+            # PNG形式で保存
+            return image.save(file_path, "PNG")
+        except Exception as e:
+            print(f"PNG エクスポートエラー: {e}")
+            return False
