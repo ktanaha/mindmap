@@ -78,11 +78,28 @@ class MainWindow(QMainWindow):
         layout = QHBoxLayout(central_widget)
 
         # スプリッター（2ペイン）
-        splitter = QSplitter(Qt.Orientation.Horizontal)
+        self._splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        # スプリッターのスタイルを設定（境界線を見やすく）
+        self._splitter.setStyleSheet("""
+            QSplitter::handle {
+                background-color: #d0d0d0;
+                width: 4px;
+            }
+            QSplitter::handle:hover {
+                background-color: #50a0f0;
+            }
+        """)
+
+        # スプリッターをライブ更新に設定（ドラッグ中も更新）
+        self._splitter.setOpaqueResize(True)
+
+        # スプリッターのハンドル幅を設定
+        self._splitter.setHandleWidth(4)
 
         # 左ペイン: Markdownエディタ
         self._editor = MarkdownEditor()
-        splitter.addWidget(self._editor)
+        self._splitter.addWidget(self._editor)
 
         # 右ペイン: マインドマップビュー
         self._mindmap_view = MindMapView(
@@ -91,12 +108,19 @@ class MainWindow(QMainWindow):
             line_color=self._line_color,
             layout_direction=self._layout_direction
         )
-        splitter.addWidget(self._mindmap_view)
+        self._splitter.addWidget(self._mindmap_view)
 
-        # スプリッターの初期サイズ比率（1:1）
-        splitter.setSizes([700, 700])
+        # 保存されたスプリッターサイズを復元、なければデフォルト（1:1）
+        saved_sizes = self._settings.value("splitter_sizes", [700, 700], type=list)
+        if saved_sizes and len(saved_sizes) == 2:
+            self._splitter.setSizes(saved_sizes)
+        else:
+            self._splitter.setSizes([700, 700])
 
-        layout.addWidget(splitter)
+        # スプリッターサイズ変更時に保存
+        self._splitter.splitterMoved.connect(self._on_splitter_moved)
+
+        layout.addWidget(self._splitter)
 
     def _create_menu(self) -> None:
         """メニューバーを作成する"""
@@ -712,3 +736,15 @@ class MainWindow(QMainWindow):
             event.accept()
         else:
             event.ignore()
+
+    def _on_splitter_moved(self, pos: int, index: int) -> None:
+        """
+        スプリッターが移動したときの処理
+
+        Args:
+            pos: 移動後の位置
+            index: スプリッターのインデックス
+        """
+        # 現在のサイズを保存
+        sizes = self._splitter.sizes()
+        self._settings.setValue("splitter_sizes", sizes)
