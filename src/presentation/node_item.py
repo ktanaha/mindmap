@@ -38,6 +38,7 @@ class NodeItem(QGraphicsObject):
         self._ghost_text: Optional[QGraphicsTextItem] = None
         self._ghost_underline: Optional[QGraphicsLineItem] = None
         self._is_selected = False  # 選択状態
+        self._is_focused = False  # フォーカス状態（カーソル位置に対応）
 
         # フォント設定（Nodeに設定があればそれを使用、なければデフォルト）
         self._default_font_size = font_size
@@ -110,6 +111,12 @@ class NodeItem(QGraphicsObject):
         # 下線の位置を考慮した高さ（テキストの高さ + 下線までの余白 + パディング）
         content_height = text_rect.height() + 4 + padding * 2
         content_rect = QRectF(content_x, content_y, content_width, content_height)
+
+        # フォーカス状態の背景（一番下に描画）
+        if self._is_focused:
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(220, 220, 220, 120))  # 薄いグレー
+            painter.drawRoundedRect(content_rect, 5, 5)
 
         if self._is_dragging:
             # ドラッグ中は半透明オレンジ
@@ -255,6 +262,16 @@ class NodeItem(QGraphicsObject):
             選択されている場合True
         """
         return self._is_selected
+
+    def set_focused(self, focused: bool) -> None:
+        """
+        フォーカス状態を設定
+
+        Args:
+            focused: True=フォーカス、False=非フォーカス
+        """
+        self._is_focused = focused
+        self.update()
 
     def _create_ghost(self, scene_pos) -> None:
         """

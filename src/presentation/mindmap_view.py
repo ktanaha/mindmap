@@ -37,6 +37,7 @@ class MindMapView(QGraphicsView):
         self._node_items: Dict[str, NodeItem] = {}
         self._root_node: Optional[Node] = None
         self._selected_node_item: Optional[NodeItem] = None  # 選択中のノード
+        self._focused_node_item: Optional[NodeItem] = None  # フォーカス中のノード（カーソル位置）
 
         # フォント設定
         self._font_size = font_size
@@ -75,6 +76,7 @@ class MindMapView(QGraphicsView):
         self._scene.clear()
         self._node_items.clear()
         self._selected_node_item = None  # 選択状態もクリア
+        self._focused_node_item = None  # フォーカス状態もクリア
         self._root_node = root
 
         if root is None:
@@ -683,7 +685,7 @@ class MindMapView(QGraphicsView):
 
     def center_on_node(self, node: Node) -> None:
         """
-        指定されたノードを中心に表示する
+        指定されたノードを中心に表示し、フォーカス状態にする
 
         Args:
             node: 中心に表示するノード
@@ -692,6 +694,14 @@ class MindMapView(QGraphicsView):
         node_item = self._node_items.get(node.id)
         if node_item is None:
             return
+
+        # 前のフォーカスを解除
+        if self._focused_node_item is not None and self._focused_node_item != node_item:
+            self._focused_node_item.set_focused(False)
+
+        # 新しいノードにフォーカスを設定
+        node_item.set_focused(True)
+        self._focused_node_item = node_item
 
         # ノードの中心座標を計算
         node_pos = node_item.scenePos()
