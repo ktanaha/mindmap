@@ -433,78 +433,39 @@ class MindMapView(QGraphicsView):
             child_center_x = child_pos.x() + child_rect.width() / 2
             child_center_y = child_pos.y() + child_rect.height() / 2
 
-            # 水平距離と垂直距離を比較して、どちら向きの接続かを判定
-            horizontal_distance = abs(child_center_x - parent_center_x)
-            vertical_distance = abs(child_center_y - parent_center_y)
-
-            if horizontal_distance > vertical_distance:
-                # 左右方向の接続
-                if child_center_x > parent_center_x:
-                    # 子が右側：親ノードの右端と子ノードの左端を接続
-                    start_x = parent_pos.x() + parent_rect.width() + 5
-                    start_y = parent_pos.y() + parent_rect.height() / 2
-                    end_x = child_pos.x() - 5
-                    end_y = child_pos.y() + child_rect.height() / 2
-                else:
-                    # 子が左側：親ノードの左端と子ノードの右端を接続
-                    start_x = parent_pos.x() - 5
-                    start_y = parent_pos.y() + parent_rect.height() / 2
-                    end_x = child_pos.x() + child_rect.width() + 5
-                    end_y = child_pos.y() + child_rect.height() / 2
-
-                # ベジェ曲線で接続
-                path = QPainterPath()
-                path.moveTo(start_x, start_y)
-
-                control_offset = abs(end_x - start_x) * 0.5
-                if child_center_x > parent_center_x:
-                    # 右方向
-                    path.cubicTo(
-                        start_x + control_offset, start_y,  # 第1制御点
-                        end_x - control_offset, end_y,      # 第2制御点
-                        end_x, end_y                        # 終点
-                    )
-                else:
-                    # 左方向
-                    path.cubicTo(
-                        start_x - control_offset, start_y,  # 第1制御点
-                        end_x + control_offset, end_y,      # 第2制御点
-                        end_x, end_y                        # 終点
-                    )
+            # 常に左右方向（水平方向）の接続を使用
+            if child_center_x > parent_center_x:
+                # 子が右側：親ノードの右端と子ノードの左端を接続
+                start_x = parent_pos.x() + parent_rect.width() + 5
+                start_y = parent_pos.y() + parent_rect.height() / 2
+                end_x = child_pos.x() - 5
+                end_y = child_pos.y() + child_rect.height() / 2
             else:
-                # 上下方向の接続
-                if child_center_y > parent_center_y:
-                    # 子が下側：親ノードの下端と子ノードの上端を接続
-                    start_x = parent_pos.x() + parent_rect.width() / 2
-                    start_y = parent_pos.y() + parent_rect.height() + 5
-                    end_x = child_pos.x() + child_rect.width() / 2
-                    end_y = child_pos.y() - 5
-                else:
-                    # 子が上側：親ノードの上端と子ノードの下端を接続
-                    start_x = parent_pos.x() + parent_rect.width() / 2
-                    start_y = parent_pos.y() - 5
-                    end_x = child_pos.x() + child_rect.width() / 2
-                    end_y = child_pos.y() + child_rect.height() + 5
+                # 子が左側：親ノードの左端と子ノードの右端を接続
+                start_x = parent_pos.x() - 5
+                start_y = parent_pos.y() + parent_rect.height() / 2
+                end_x = child_pos.x() + child_rect.width() + 5
+                end_y = child_pos.y() + child_rect.height() / 2
 
-                # ベジェ曲線で接続
-                path = QPainterPath()
-                path.moveTo(start_x, start_y)
+            # ベジェ曲線で接続
+            path = QPainterPath()
+            path.moveTo(start_x, start_y)
 
-                control_offset = abs(end_y - start_y) * 0.5
-                if child_center_y > parent_center_y:
-                    # 下方向
-                    path.cubicTo(
-                        start_x, start_y + control_offset,  # 第1制御点
-                        end_x, end_y - control_offset,      # 第2制御点
-                        end_x, end_y                        # 終点
-                    )
-                else:
-                    # 上方向
-                    path.cubicTo(
-                        start_x, start_y - control_offset,  # 第1制御点
-                        end_x, end_y + control_offset,      # 第2制御点
-                        end_x, end_y                        # 終点
-                    )
+            control_offset = abs(end_x - start_x) * 0.5
+            if child_center_x > parent_center_x:
+                # 右方向
+                path.cubicTo(
+                    start_x + control_offset, start_y,  # 第1制御点
+                    end_x - control_offset, end_y,      # 第2制御点
+                    end_x, end_y                        # 終点
+                )
+            else:
+                # 左方向
+                path.cubicTo(
+                    start_x - control_offset, start_y,  # 第1制御点
+                    end_x + control_offset, end_y,      # 第2制御点
+                    end_x, end_y                        # 終点
+                )
 
             # パスを描画
             path_item = QGraphicsPathItem(path)
