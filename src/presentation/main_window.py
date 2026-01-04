@@ -422,58 +422,71 @@ class MainWindow(QMainWindow):
         dialog.set_layout_direction(self._layout_direction)
         dialog.set_pane_orientation(self._pane_orientation)
 
+        # 適用ボタンが押されたときに設定を適用
+        dialog.settings_changed.connect(lambda: self._apply_settings_from_dialog(dialog))
+
         if dialog.exec():
-            # 設定を取得
-            new_font_size = dialog.get_font_size()
-            new_font_color = dialog.get_font_color()
-            new_line_color = dialog.get_line_color()
-            new_layout_direction = dialog.get_layout_direction()
-            new_pane_orientation = dialog.get_pane_orientation()
-            apply_scope = dialog.get_apply_scope()
+            # OKボタンが押されたときも設定を適用
+            self._apply_settings_from_dialog(dialog)
 
-            # 適用範囲に応じて設定を適用
-            selected_node = self._mindmap_view.get_selected_node()
+    def _apply_settings_from_dialog(self, dialog: SettingsDialog) -> None:
+        """
+        設定ダイアログから設定を適用する
 
-            if apply_scope == 0:
-                # 全体に適用
-                self._font_size = new_font_size
-                self._font_color = new_font_color
-                self._line_color = new_line_color
-                self._layout_direction = new_layout_direction
+        Args:
+            dialog: 設定ダイアログ
+        """
+        # 設定を取得
+        new_font_size = dialog.get_font_size()
+        new_font_color = dialog.get_font_color()
+        new_line_color = dialog.get_line_color()
+        new_layout_direction = dialog.get_layout_direction()
+        new_pane_orientation = dialog.get_pane_orientation()
+        apply_scope = dialog.get_apply_scope()
 
-                # ペイン配置が変更された場合
-                if self._pane_orientation != new_pane_orientation:
-                    self._pane_orientation = new_pane_orientation
-                    self._update_pane_orientation()
+        # 適用範囲に応じて設定を適用
+        selected_node = self._mindmap_view.get_selected_node()
 
-                self._save_settings()
+        if apply_scope == 0:
+            # 全体に適用
+            self._font_size = new_font_size
+            self._font_color = new_font_color
+            self._line_color = new_line_color
+            self._layout_direction = new_layout_direction
 
-                # マインドマップビューのデフォルト設定を更新
-                self._mindmap_view.set_font_size(new_font_size)
-                self._mindmap_view.set_font_color(new_font_color)
-                self._mindmap_view.set_line_color(new_line_color)
-                self._mindmap_view.set_layout_direction(new_layout_direction)
+            # ペイン配置が変更された場合
+            if self._pane_orientation != new_pane_orientation:
+                self._pane_orientation = new_pane_orientation
+                self._update_pane_orientation()
 
-            elif apply_scope == 1:
-                # 選択中のノードのみ
-                if selected_node is not None:
-                    selected_node.font_size = new_font_size
-                    selected_node.font_color = new_font_color.name()
-                else:
-                    QMessageBox.warning(self, "警告", "ノードが選択されていません")
-                    return
+            self._save_settings()
 
-            elif apply_scope == 2:
-                # 選択中のノード以下すべて
-                if selected_node is not None:
-                    self._apply_settings_to_subtree(selected_node, new_font_size, new_font_color.name())
-                else:
-                    QMessageBox.warning(self, "警告", "ノードが選択されていません")
-                    return
+            # マインドマップビューのデフォルト設定を更新
+            self._mindmap_view.set_font_size(new_font_size)
+            self._mindmap_view.set_font_color(new_font_color)
+            self._mindmap_view.set_line_color(new_line_color)
+            self._mindmap_view.set_layout_direction(new_layout_direction)
 
-            # ビューを再描画
-            root = self._mindmap.root
-            self._mindmap_view.display_tree(root)
+        elif apply_scope == 1:
+            # 選択中のノードのみ
+            if selected_node is not None:
+                selected_node.font_size = new_font_size
+                selected_node.font_color = new_font_color.name()
+            else:
+                QMessageBox.warning(self, "警告", "ノードが選択されていません")
+                return
+
+        elif apply_scope == 2:
+            # 選択中のノード以下すべて
+            if selected_node is not None:
+                self._apply_settings_to_subtree(selected_node, new_font_size, new_font_color.name())
+            else:
+                QMessageBox.warning(self, "警告", "ノードが選択されていません")
+                return
+
+        # ビューを再描画
+        root = self._mindmap.root
+        self._mindmap_view.display_tree(root)
 
     def _apply_settings_to_subtree(self, node: Node, font_size: int, font_color: str) -> None:
         """

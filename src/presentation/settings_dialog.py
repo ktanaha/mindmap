@@ -5,7 +5,7 @@
 """
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QSpinBox, QColorDialog, QGroupBox, QRadioButton, QButtonGroup
+    QPushButton, QSpinBox, QColorDialog, QGroupBox, QRadioButton, QButtonGroup, QTabWidget
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
@@ -41,6 +41,35 @@ class SettingsDialog(QDialog):
         """UIをセットアップする"""
         layout = QVBoxLayout(self)
 
+        # タブウィジェットを作成
+        tab_widget = QTabWidget()
+
+        # === タブ1: フォント設定 ===
+        font_tab = self._create_font_tab()
+        tab_widget.addTab(font_tab, "フォント設定")
+
+        # === タブ2: レイアウト設定 ===
+        layout_tab = self._create_layout_tab()
+        tab_widget.addTab(layout_tab, "レイアウト設定")
+
+        layout.addWidget(tab_widget)
+
+        # 全体のボタン
+        button_layout = QHBoxLayout()
+        ok_button = QPushButton("OK")
+        ok_button.clicked.connect(self.accept)
+        cancel_button = QPushButton("キャンセル")
+        cancel_button.clicked.connect(self.reject)
+        button_layout.addStretch()
+        button_layout.addWidget(ok_button)
+        button_layout.addWidget(cancel_button)
+        layout.addLayout(button_layout)
+
+    def _create_font_tab(self):
+        """フォント設定タブを作成"""
+        font_tab_widget = QGroupBox()
+        font_tab_layout = QVBoxLayout()
+
         # フォントサイズグループ
         font_group = QGroupBox("フォント設定")
         font_layout = QVBoxLayout()
@@ -70,7 +99,7 @@ class SettingsDialog(QDialog):
         font_layout.addLayout(color_layout)
 
         font_group.setLayout(font_layout)
-        layout.addWidget(font_group)
+        font_tab_layout.addWidget(font_group)
 
         # 線の設定グループ
         line_group = QGroupBox("線の設定")
@@ -89,7 +118,46 @@ class SettingsDialog(QDialog):
         line_layout.addLayout(line_color_layout)
 
         line_group.setLayout(line_layout)
-        layout.addWidget(line_group)
+        font_tab_layout.addWidget(line_group)
+
+        # 適用範囲グループ
+        scope_group = QGroupBox("適用範囲")
+        scope_layout = QVBoxLayout()
+
+        self._scope_button_group = QButtonGroup()
+        self._scope_all = QRadioButton("全体に適用")
+        self._scope_selected = QRadioButton("選択中のノードのみ")
+        self._scope_subtree = QRadioButton("選択中のノード以下すべて")
+
+        self._scope_button_group.addButton(self._scope_all, 0)
+        self._scope_button_group.addButton(self._scope_selected, 1)
+        self._scope_button_group.addButton(self._scope_subtree, 2)
+        self._scope_all.setChecked(True)  # デフォルトは全体
+
+        scope_layout.addWidget(self._scope_all)
+        scope_layout.addWidget(self._scope_selected)
+        scope_layout.addWidget(self._scope_subtree)
+
+        scope_group.setLayout(scope_layout)
+        font_tab_layout.addWidget(scope_group)
+
+        font_tab_layout.addStretch()
+
+        # フォント設定タブの適用ボタン
+        font_apply_layout = QHBoxLayout()
+        font_apply_button = QPushButton("フォント設定を適用")
+        font_apply_button.clicked.connect(self._apply_font_settings)
+        font_apply_layout.addStretch()
+        font_apply_layout.addWidget(font_apply_button)
+        font_tab_layout.addLayout(font_apply_layout)
+
+        font_tab_widget.setLayout(font_tab_layout)
+        return font_tab_widget
+
+    def _create_layout_tab(self):
+        """レイアウト設定タブを作成"""
+        layout_tab_widget = QGroupBox()
+        layout_tab_layout = QVBoxLayout()
 
         # ペイン配置設定グループ
         pane_orientation_group = QGroupBox("ペイン配置")
@@ -107,7 +175,7 @@ class SettingsDialog(QDialog):
         pane_orientation_layout.addWidget(self._pane_vertical)
 
         pane_orientation_group.setLayout(pane_orientation_layout)
-        layout.addWidget(pane_orientation_group)
+        layout_tab_layout.addWidget(pane_orientation_group)
 
         # レイアウト設定グループ（マインドマップのノード配置）
         layout_group = QGroupBox("マインドマップノード配置")
@@ -131,41 +199,28 @@ class SettingsDialog(QDialog):
         layout_layout.addWidget(self._layout_vertical_alternate)
 
         layout_group.setLayout(layout_layout)
-        layout.addWidget(layout_group)
+        layout_tab_layout.addWidget(layout_group)
 
-        # 適用範囲グループ
-        scope_group = QGroupBox("適用範囲")
-        scope_layout = QVBoxLayout()
+        layout_tab_layout.addStretch()
 
-        self._scope_button_group = QButtonGroup()
-        self._scope_all = QRadioButton("全体に適用")
-        self._scope_selected = QRadioButton("選択中のノードのみ")
-        self._scope_subtree = QRadioButton("選択中のノード以下すべて")
+        # レイアウト設定タブの適用ボタン
+        layout_apply_layout = QHBoxLayout()
+        layout_apply_button = QPushButton("レイアウト設定を適用")
+        layout_apply_button.clicked.connect(self._apply_layout_settings)
+        layout_apply_layout.addStretch()
+        layout_apply_layout.addWidget(layout_apply_button)
+        layout_tab_layout.addLayout(layout_apply_layout)
 
-        self._scope_button_group.addButton(self._scope_all, 0)
-        self._scope_button_group.addButton(self._scope_selected, 1)
-        self._scope_button_group.addButton(self._scope_subtree, 2)
-        self._scope_all.setChecked(True)  # デフォルトは全体
+        layout_tab_widget.setLayout(layout_tab_layout)
+        return layout_tab_widget
 
-        scope_layout.addWidget(self._scope_all)
-        scope_layout.addWidget(self._scope_selected)
-        scope_layout.addWidget(self._scope_subtree)
+    def _apply_font_settings(self) -> None:
+        """フォント設定を適用"""
+        self.settings_changed.emit()
 
-        scope_group.setLayout(scope_layout)
-        layout.addWidget(scope_group)
-
-        layout.addStretch()
-
-        # ボタン
-        button_layout = QHBoxLayout()
-        ok_button = QPushButton("OK")
-        ok_button.clicked.connect(self.accept)
-        cancel_button = QPushButton("キャンセル")
-        cancel_button.clicked.connect(self.reject)
-        button_layout.addStretch()
-        button_layout.addWidget(ok_button)
-        button_layout.addWidget(cancel_button)
-        layout.addLayout(button_layout)
+    def _apply_layout_settings(self) -> None:
+        """レイアウト設定を適用"""
+        self.settings_changed.emit()
 
     def _choose_color(self) -> None:
         """色選択ダイアログを表示する"""
