@@ -76,7 +76,7 @@ class MarkdownEditor(QPlainTextEdit):
 
     def move_cursor_to_line(self, line_number: int) -> None:
         """
-        カーソルを指定行に移動する
+        カーソルを指定行のテキスト先頭に移動する
 
         Args:
             line_number: 移動先の行番号（0始まり）
@@ -90,6 +90,33 @@ class MarkdownEditor(QPlainTextEdit):
         # 指定行まで移動
         for _ in range(line_number):
             cursor.movePosition(QTextCursor.MoveOperation.Down)
+
+        # 行の先頭に移動
+        cursor.movePosition(QTextCursor.MoveOperation.StartOfLine)
+
+        # 行のテキストを取得
+        cursor.select(QTextCursor.SelectionType.LineUnderCursor)
+        line_text = cursor.selectedText()
+
+        # 選択を解除して行の先頭に戻る
+        cursor.clearSelection()
+        cursor.movePosition(QTextCursor.MoveOperation.StartOfLine)
+
+        # リストパターン: インデント + "- " または "* " + テキスト
+        list_pattern = re.match(r'^(\s*)([-*])\s+', line_text)
+        if list_pattern:
+            # リストマーカーの後にカーソルを移動
+            indent = list_pattern.group(1)  # インデント部分
+            marker = list_pattern.group(2)  # - または *
+            prefix_length = len(indent) + len(marker) + 1  # "  - " の長さ（スペース含む）
+            cursor.movePosition(QTextCursor.MoveOperation.Right, QTextCursor.MoveMode.MoveAnchor, prefix_length)
+        else:
+            # 見出しパターン: "# " + テキスト
+            heading_pattern = re.match(r'^(#{1,6})\s+', line_text)
+            if heading_pattern:
+                # 見出しマーカーの後にカーソルを移動
+                prefix_length = len(heading_pattern.group(0))
+                cursor.movePosition(QTextCursor.MoveOperation.Right, QTextCursor.MoveMode.MoveAnchor, prefix_length)
 
         # カーソルを設定
         self.setTextCursor(cursor)
