@@ -271,6 +271,21 @@ class MarkdownParser:
         """
         return self._line_to_node_map.get(line_number)
 
+    def get_line_by_node(self, node: Node) -> Optional[int]:
+        """
+        ノードから行番号を検索する
+
+        Args:
+            node: ノード
+
+        Returns:
+            対応する行番号（0始まり）、見つからない場合はNone
+        """
+        for line_num, n in self._line_to_node_map.items():
+            if n == node:
+                return line_num
+        return None
+
     def _find_parent(self, level: int, level_stack: dict) -> Optional[Node]:
         """
         指定されたレベルのノードの親を探す

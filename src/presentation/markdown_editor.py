@@ -74,6 +74,29 @@ class MarkdownEditor(QPlainTextEdit):
         """
         self.setPlainText(text)
 
+    def move_cursor_to_line(self, line_number: int) -> None:
+        """
+        カーソルを指定行に移動する
+
+        Args:
+            line_number: 移動先の行番号（0始まり）
+        """
+        # QTextCursorを取得
+        cursor = self.textCursor()
+
+        # ドキュメントの先頭に移動
+        cursor.movePosition(QTextCursor.MoveOperation.Start)
+
+        # 指定行まで移動
+        for _ in range(line_number):
+            cursor.movePosition(QTextCursor.MoveOperation.Down)
+
+        # カーソルを設定
+        self.setTextCursor(cursor)
+
+        # カーソル位置を画面中央に表示
+        self.centerCursor()
+
     def keyPressEvent(self, event: QKeyEvent) -> None:
         """
         キー押下イベントを処理する

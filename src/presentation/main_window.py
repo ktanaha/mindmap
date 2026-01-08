@@ -194,6 +194,9 @@ class MainWindow(QMainWindow):
         # ノードが付け替えられたときにMarkdownを更新
         self._mindmap_view.node_reparented.connect(self._on_node_reparented)
 
+        # マインドマップのノードがクリックされたときにエディタのカーソルを移動
+        self._mindmap_view.node_clicked.connect(self._on_node_clicked)
+
     def _on_text_changed(self, text: str) -> None:
         """
         テキスト変更時の処理
@@ -255,6 +258,19 @@ class MainWindow(QMainWindow):
 
         # フラグをリセット
         self._updating_from_drag = False
+
+    def _on_node_clicked(self, node: Node) -> None:
+        """
+        マインドマップのノードがクリックされたときの処理
+
+        Args:
+            node: クリックされたノード
+        """
+        # ノードから行番号を取得
+        line_number = self._parser.get_line_by_node(node)
+        if line_number is not None:
+            # エディタのカーソルを移動
+            self._editor.move_cursor_to_line(line_number)
 
     def _on_new(self) -> None:
         """新規作成"""

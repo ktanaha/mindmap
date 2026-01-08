@@ -16,6 +16,8 @@ class MindMapView(QGraphicsView):
 
     # ノードが付け替えられたときのシグナル
     node_reparented = pyqtSignal(Node, Node)
+    # ノードがクリックされたときのシグナル（ノードを渡す）
+    node_clicked = pyqtSignal(Node)
 
     def __init__(self, parent=None, font_size: int = 14, font_color: QColor = None, line_color: QColor = None, layout_direction: int = 0) -> None:
         """
@@ -508,6 +510,8 @@ class MindMapView(QGraphicsView):
         # 新しい選択を保存
         if node_item.is_selected():
             self._selected_node_item = node_item
+            # ノードがクリックされたことを通知
+            self.node_clicked.emit(node_item.node)
         else:
             self._selected_node_item = None
 
