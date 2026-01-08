@@ -72,8 +72,9 @@ class NodeItem(QGraphicsObject):
         self._underline.setPen(underline_pen)
 
         # ドラッグ可能に設定
-        self.setFlag(QGraphicsObject.GraphicsItemFlag.ItemIsMovable, False)  # 自動移動は無効化
+        self.setFlag(QGraphicsObject.GraphicsItemFlag.ItemIsMovable, True)  # ドラッグで移動可能に
         self.setFlag(QGraphicsObject.GraphicsItemFlag.ItemIsSelectable, True)
+        self.setFlag(QGraphicsObject.GraphicsItemFlag.ItemSendsGeometryChanges, True)  # 位置変更を検出
         self.setAcceptHoverEvents(True)
 
     @property
@@ -164,6 +165,11 @@ class NodeItem(QGraphicsObject):
 
             # 左クリックでドロップ先がある場合のみ、シグナルを発火
             if event.button() == Qt.MouseButton.LeftButton and self._hover_target is not None:
+                # ドロップ時の位置を保存
+                pos = self.pos()
+                self._node.set_position(int(pos.x()), int(pos.y()))
+                self._node.manual_position = True
+
                 # 先にハイライトを解除（シグナル発火後にアイテムが削除されるため）
                 self._hover_target.set_highlight(False)
                 target_node = self._hover_target.node
@@ -178,10 +184,26 @@ class NodeItem(QGraphicsObject):
                 self._hover_target.set_highlight(False)
                 self._hover_target = None
 
-            # ドロップしなかった場合は選択状態をトグル
+            # ドロップしなかった場合は手動配置として位置を保存
             if event.button() == Qt.MouseButton.LeftButton:
-                self.set_selected(not self._is_selected)
-                self.node_selected.emit(self)
+                # ドラッグした場合（少し移動した場合）は手動配置として位置を保存
+                if self._drag_start_pos is not None:
+                    current_pos = event.scenePos()
+                    drag_distance = (current_pos - self._drag_start_pos).manhattanLength()
+                    if drag_distance > 5:  # 5ピクセル以上移動した場合
+                        # 手動配置フラグをセット
+                        self._node.manual_position = True
+                        # 現在の位置を保存
+                        pos = self.pos()
+                        self._node.set_position(int(pos.x()), int(pos.y()))
+                    else:
+                        # ほとんど移動していない場合は選択状態をトグル
+                        self.set_selected(not self._is_selected)
+                        self.node_selected.emit(self)
+                else:
+                    # ドラッグ開始位置がない場合は選択状態をトグル
+                    self.set_selected(not self._is_selected)
+                    self.node_selected.emit(self)
 
             self.update()
         super().mouseReleaseEvent(event)

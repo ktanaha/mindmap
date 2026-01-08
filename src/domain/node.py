@@ -26,6 +26,7 @@ class Node:
         self._position: Tuple[int, int] = (0, 0)
         self._font_size: Optional[int] = font_size
         self._font_color: Optional[str] = font_color  # カラーコード（例: "#FF0000"）
+        self._manual_position: bool = False  # 手動配置フラグ
 
     @property
     def id(self) -> str:
@@ -76,6 +77,16 @@ class Node:
     def font_color(self, value: Optional[str]) -> None:
         """フォント色を設定"""
         self._font_color = value
+
+    @property
+    def manual_position(self) -> bool:
+        """手動配置フラグを取得"""
+        return self._manual_position
+
+    @manual_position.setter
+    def manual_position(self, value: bool) -> None:
+        """手動配置フラグを設定"""
+        self._manual_position = value
 
     def add_child(self, child: "Node") -> None:
         """

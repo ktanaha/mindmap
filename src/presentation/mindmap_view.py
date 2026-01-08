@@ -327,13 +327,19 @@ class MindMapView(QGraphicsView):
         # NodeItemを作成
         node_item = NodeItem(node, depth, self._font_size, self._font_color)
 
-        # direction=-1（左）の場合は、xからノード幅を引いた位置に配置
-        if direction == -1:
-            node_x = x - node_item.boundingRect().width()
+        # 手動配置されたノードの場合は保存された位置を使用
+        if node.manual_position:
+            pos = node.position
+            node_item.setPos(pos[0], pos[1])
         else:
-            node_x = x
+            # direction=-1（左）の場合は、xからノード幅を引いた位置に配置
+            if direction == -1:
+                node_x = x - node_item.boundingRect().width()
+            else:
+                node_x = x
 
-        node_item.setPos(node_x, y - node_item.boundingRect().height() / 2)
+            node_item.setPos(node_x, y - node_item.boundingRect().height() / 2)
+
         self._scene.addItem(node_item)
         self._node_items[node.id] = node_item
 
@@ -400,16 +406,22 @@ class MindMapView(QGraphicsView):
         # NodeItemを作成
         node_item = NodeItem(node, depth, self._font_size, self._font_color)
 
-        # ノードを配置（x座標を中心に配置）
-        node_x = x - node_item.boundingRect().width() / 2
-
-        # direction=-1（上）の場合は、yからノード高さを引いた位置に配置
-        if direction == -1:
-            node_y = y - node_item.boundingRect().height()
+        # 手動配置されたノードの場合は保存された位置を使用
+        if node.manual_position:
+            pos = node.position
+            node_item.setPos(pos[0], pos[1])
         else:
-            node_y = y
+            # ノードを配置（x座標を中心に配置）
+            node_x = x - node_item.boundingRect().width() / 2
 
-        node_item.setPos(node_x, node_y)
+            # direction=-1（上）の場合は、yからノード高さを引いた位置に配置
+            if direction == -1:
+                node_y = y - node_item.boundingRect().height()
+            else:
+                node_y = y
+
+            node_item.setPos(node_x, node_y)
+
         self._scene.addItem(node_item)
         self._node_items[node.id] = node_item
 
@@ -537,7 +549,7 @@ class MindMapView(QGraphicsView):
             dropped_node.parent.remove_child(dropped_node)
         target_node.add_child(dropped_node)
 
-        # ビューを再描画
+        # ビューを再描画（ドロップ時に保存された位置が使用される）
         self.display_tree(self._root_node)
 
         # 変更をシグナルで通知
