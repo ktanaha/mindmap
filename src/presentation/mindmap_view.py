@@ -112,32 +112,51 @@ class MindMapView(QGraphicsView):
                     self._draw_node_with_direction(child, start_x, child_center_y, 0, direction=1, vertical_spacing=vertical_spacing)
                     current_y += child_heights[i] + vertical_spacing
             elif self._layout_direction == 1:
-                # 左右交互モード：左右に振り分ける
+                # 左右交互モード：左右に振り分ける（対称的に配置）
                 center_x = 500
-                start_y = 100
                 vertical_spacing = 80  # 左右で重ならないように間隔を広げる
 
                 # 各トップレベルノードの高さを計算
                 child_heights = [self._calculate_subtree_height(child, vertical_spacing) for child in root.children]
 
-                # 左側と右側に分ける
+                # 左側と右側に分ける（合計高さができるだけ均等になるように）
                 left_children = []
                 right_children = []
-                for i, child in enumerate(root.children):
-                    if i % 2 == 0:
-                        right_children.append((child, child_heights[i]))
-                    else:
-                        left_children.append((child, child_heights[i]))
+                left_total = 0
+                right_total = 0
 
-                # 右側を配置
-                current_y = start_y
+                # 高さが大きい順にソート
+                children_with_heights = [(root.children[i], child_heights[i]) for i in range(len(root.children))]
+                children_with_heights.sort(key=lambda x: x[1], reverse=True)
+
+                # 貪欲法で左右に振り分け
+                for child, height in children_with_heights:
+                    if left_total <= right_total:
+                        left_children.append((child, height))
+                        left_total += height
+                    else:
+                        right_children.append((child, height))
+                        right_total += height
+
+                # 左右の合計高さを計算（スペース込み）
+                left_total_height = sum(h for _, h in left_children) + vertical_spacing * (len(left_children) - 1) if left_children else 0
+                right_total_height = sum(h for _, h in right_children) + vertical_spacing * (len(right_children) - 1) if right_children else 0
+
+                # 両側の高さの最大値を取得して、中央揃えにする
+                max_height = max(left_total_height, right_total_height)
+                center_y = 300
+
+                # 右側を配置（中央揃え）
+                start_y_right = center_y - right_total_height / 2
+                current_y = start_y_right
                 for child, height in right_children:
                     child_center_y = current_y + height / 2
                     self._draw_node_with_direction(child, center_x + 50, child_center_y, 0, direction=1, vertical_spacing=vertical_spacing)
                     current_y += height + vertical_spacing
 
-                # 左側を配置
-                current_y = start_y
+                # 左側を配置（中央揃え）
+                start_y_left = center_y - left_total_height / 2
+                current_y = start_y_left
                 for child, height in left_children:
                     child_center_y = current_y + height / 2
                     self._draw_node_with_direction(child, center_x - 50, child_center_y, 0, direction=-1, vertical_spacing=vertical_spacing)
@@ -158,32 +177,50 @@ class MindMapView(QGraphicsView):
                     self._draw_node_vertical(child, child_center_x, start_y, 0, direction=1, horizontal_spacing=horizontal_spacing)
                     current_x += child_widths[i] + horizontal_spacing
             else:
-                # 上下交互モード：上下に振り分ける
+                # 上下交互モード：上下に振り分ける（対称的に配置）
                 center_y = 300
-                start_x = 100
                 horizontal_spacing = 120  # 上下で重ならないように間隔を広げる
 
                 # 各トップレベルノードの幅を計算
                 child_widths = [self._calculate_subtree_width(child, horizontal_spacing) for child in root.children]
 
-                # 上側と下側に分ける
+                # 上側と下側に分ける（合計幅ができるだけ均等になるように）
                 top_children = []
                 bottom_children = []
-                for i, child in enumerate(root.children):
-                    if i % 2 == 0:
-                        bottom_children.append((child, child_widths[i]))
+                top_total = 0
+                bottom_total = 0
+
+                # 幅が大きい順にソート
+                children_with_widths = [(root.children[i], child_widths[i]) for i in range(len(root.children))]
+                children_with_widths.sort(key=lambda x: x[1], reverse=True)
+
+                # 貪欲法で上下に振り分け
+                for child, width in children_with_widths:
+                    if top_total <= bottom_total:
+                        top_children.append((child, width))
+                        top_total += width
                     else:
-                        top_children.append((child, child_widths[i]))
+                        bottom_children.append((child, width))
+                        bottom_total += width
+
+                # 上下の合計幅を計算（スペース込み）
+                top_total_width = sum(w for _, w in top_children) + horizontal_spacing * (len(top_children) - 1) if top_children else 0
+                bottom_total_width = sum(w for _, w in bottom_children) + horizontal_spacing * (len(bottom_children) - 1) if bottom_children else 0
+
+                # 中央揃えで配置
+                center_x = 500
+                start_x_top = center_x - top_total_width / 2
+                start_x_bottom = center_x - bottom_total_width / 2
 
                 # 下側を配置
-                current_x = start_x
+                current_x = start_x_bottom
                 for child, width in bottom_children:
                     child_center_x = current_x + width / 2
                     self._draw_node_vertical(child, child_center_x, center_y + 50, 0, direction=1, horizontal_spacing=horizontal_spacing)
                     current_x += width + horizontal_spacing
 
                 # 上側を配置
-                current_x = start_x
+                current_x = start_x_top
                 for child, width in top_children:
                     child_center_x = current_x + width / 2
                     self._draw_node_vertical(child, child_center_x, center_y - 50, 0, direction=-1, horizontal_spacing=horizontal_spacing)
