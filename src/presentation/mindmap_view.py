@@ -4,8 +4,9 @@
 右ペインのマインドマップ表示エリア
 """
 from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPathItem
-from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPointF
+from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPointF, QEvent
 from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QPainterPath, QImage
+from PyQt6.QtWidgets import QPinchGesture
 from typing import Optional, Dict, Tuple, List
 from src.domain.node import Node
 from src.presentation.node_item import NodeItem
@@ -72,6 +73,9 @@ class MindMapView(QGraphicsView):
         # トラックパッドのスムーズスクロールを有効化
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        # ピンチジェスチャーを有効化
+        self.grabGesture(Qt.GestureType.PinchGesture)
 
     def display_tree(self, root: Optional[Node]) -> None:
         """
@@ -663,6 +667,92 @@ class MindMapView(QGraphicsView):
 
         # その他のキーは通常処理
         super().keyPressEvent(event)
+
+    def event(self, event) -> bool:
+        """
+        イベントを処理（ジェスチャー検出用）
+
+        Args:
+            event: イベント
+
+        Returns:
+            イベントが処理された場合True
+        """
+        if event.type() == QEvent.Type.Gesture:
+            return self._gesture_event(event)
+        return super().event(event)
+
+    def _gesture_event(self, event) -> bool:
+        """
+        ジェスチャーイベントを処理
+
+        Args:
+            event: ジェスチャーイベント
+
+        Returns:
+            イベントが処理された場合True
+        """
+        pinch = event.gesture(Qt.GestureType.PinchGesture)
+        if pinch:
+            return self._pinch_triggered(pinch)
+        return True
+
+    def _pinch_triggered(self, gesture: QPinchGesture) -> bool:
+        """
+        ピンチジェスチャーを処理
+
+        Args:
+            gesture: ピンチジェスチャー
+
+        Returns:
+            イベントが処理された場合True
+        """
+        change_flags = gesture.changeFlags()
+
+        # スケール変更がある場合
+        if change_flags & QPinchGesture.ChangeFlag.ScaleFactorChanged:
+            # 現在のスケールファクターを取得
+            current_scale = gesture.scaleFactor()
+
+            # 新しいズームレベルを計算
+            new_zoom = self._zoom_level * current_scale
+
+            # ズームレベルの範囲制限
+            if new_zoom < self._zoom_min or new_zoom > self._zoom_max:
+                return True
+
+            # ズームレベルを更新
+            self._zoom_level = new_zoom
+
+            # ジェスチャーの中心点を取得
+            center_point = gesture.centerPoint()
+
+            # ビューポート座標をシーン座標に変換
+            scene_pos = self.mapToScene(center_point.toPoint())
+
+            # 中心点を基準にズーム
+            self.setTransformationAnchor(QGraphicsView.ViewportAnchor.NoAnchor)
+            self.setResizeAnchor(QGraphicsView.ViewportAnchor.NoAnchor)
+
+            # 現在の中心点のビューポート座標を保存
+            old_pos = self.mapFromScene(scene_pos)
+
+            # スケールを適用
+            self.scale(current_scale, current_scale)
+
+            # 新しい中心点のビューポート座標を取得
+            new_pos = self.mapFromScene(scene_pos)
+
+            # 差分を計算してビューを移動
+            delta = new_pos - old_pos
+            self.horizontalScrollBar().setValue(
+                int(self.horizontalScrollBar().value() + delta.x())
+            )
+            self.verticalScrollBar().setValue(
+                int(self.verticalScrollBar().value() + delta.y())
+            )
+
+        return True
 
     def set_font_size(self, size: int) -> None:
         """
