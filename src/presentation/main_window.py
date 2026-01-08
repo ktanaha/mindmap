@@ -197,6 +197,9 @@ class MainWindow(QMainWindow):
         # マインドマップのノードがクリックされたときにエディタのカーソルを移動
         self._mindmap_view.node_clicked.connect(self._on_node_clicked)
 
+        # マインドマップでテキスト入力があったときにエディタに転送
+        self._mindmap_view.forward_text_input.connect(self._on_forward_text_input)
+
     def _on_text_changed(self, text: str) -> None:
         """
         テキスト変更時の処理
@@ -271,6 +274,18 @@ class MainWindow(QMainWindow):
         if line_number is not None:
             # エディタのカーソルを移動
             self._editor.move_cursor_to_line(line_number)
+
+    def _on_forward_text_input(self, text: str) -> None:
+        """
+        マインドマップからテキスト入力を転送する
+
+        Args:
+            text: 入力されたテキスト
+        """
+        # エディタにフォーカスを設定
+        self._editor.setFocus()
+        # テキストをカーソル位置に挿入
+        self._editor.insertPlainText(text)
 
     def _on_new(self) -> None:
         """新規作成"""

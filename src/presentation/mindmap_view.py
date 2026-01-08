@@ -18,6 +18,8 @@ class MindMapView(QGraphicsView):
     node_reparented = pyqtSignal(Node, Node)
     # ノードがクリックされたときのシグナル（ノードを渡す）
     node_clicked = pyqtSignal(Node)
+    # テキスト入力をエディタに転送するシグナル（キーイベントのテキストを渡す）
+    forward_text_input = pyqtSignal(str)
 
     def __init__(self, parent=None, font_size: int = 14, font_color: QColor = None, line_color: QColor = None, layout_direction: int = 0) -> None:
         """
@@ -611,6 +613,24 @@ class MindMapView(QGraphicsView):
                 return
 
         super().mouseReleaseEvent(event)
+
+    def keyPressEvent(self, event) -> None:
+        """
+        キー押下イベントを処理
+
+        Args:
+            event: キーイベント
+        """
+        # テキスト入力可能なキーの場合、エディタに転送
+        text = event.text()
+        if text and text.isprintable() and not event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            # 入力可能な文字（Ctrl修飾子がない場合）をエディタに転送
+            self.forward_text_input.emit(text)
+            event.accept()
+            return
+
+        # その他のキーは通常処理
+        super().keyPressEvent(event)
 
     def set_font_size(self, size: int) -> None:
         """
