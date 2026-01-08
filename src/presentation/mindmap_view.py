@@ -4,7 +4,7 @@
 右ペインのマインドマップ表示エリア
 """
 from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPathItem
-from PyQt6.QtCore import Qt, pyqtSignal, QRectF
+from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPointF
 from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QPainterPath, QImage
 from typing import Optional, Dict, Tuple, List
 from src.domain.node import Node
@@ -68,6 +68,10 @@ class MindMapView(QGraphicsView):
 
         # ドラッグモードは無効化（ノードのドラッグを優先）
         self.setDragMode(QGraphicsView.DragMode.NoDrag)
+
+        # トラックパッドのスムーズスクロールを有効化
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
     def display_tree(self, root: Optional[Node]) -> None:
         """
@@ -530,32 +534,55 @@ class MindMapView(QGraphicsView):
 
     def wheelEvent(self, event) -> None:
         """
-        マウスホイールイベントを処理（拡大縮小）
+        マウスホイール/トラックパッドイベントを処理
 
         Args:
             event: ホイールイベント
         """
         # ホイールの回転量を取得
-        delta = event.angleDelta().y()
+        delta_y = event.angleDelta().y()
+        delta_x = event.angleDelta().x()
 
-        # ズーム倍率を計算（1ノッチで15%の拡大縮小）
-        zoom_factor = 1.15 if delta > 0 else 1 / 1.15
+        # Cmd/Ctrlキーが押されている場合、またはピンチジェスチャーの場合はズーム
+        if event.modifiers() & (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.MetaModifier):
+            if delta_y == 0:
+                return
 
-        # 新しいズームレベルを計算
-        new_zoom = self._zoom_level * zoom_factor
+            # ズーム倍率を計算（トラックパッドのスムーズなピンチに対応）
+            # delta_yの値を小さくしてスムーズにズーム
+            zoom_factor = 1.0 + (delta_y / 1200.0)
 
-        # ズームレベルの範囲制限
-        if new_zoom < self._zoom_min or new_zoom > self._zoom_max:
-            return
+            # 新しいズームレベルを計算
+            new_zoom = self._zoom_level * zoom_factor
 
-        # ズームレベルを更新
-        self._zoom_level = new_zoom
+            # ズームレベルの範囲制限
+            if new_zoom < self._zoom_min or new_zoom > self._zoom_max:
+                return
 
-        # マウスカーソル位置を中心に拡大縮小
-        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
-        self.scale(zoom_factor, zoom_factor)
+            # ズームレベルを更新
+            self._zoom_level = new_zoom
 
-        event.accept()
+            # マウスカーソル位置を中心に拡大縮小
+            self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+            self.scale(zoom_factor, zoom_factor)
+
+            event.accept()
+        else:
+            # 通常のスクロール（パン）
+            # 2本指スワイプでスムーズにパン
+            # 垂直スクロール
+            if delta_y != 0:
+                self.verticalScrollBar().setValue(
+                    self.verticalScrollBar().value() - delta_y
+                )
+
+            # 水平スクロール
+            if delta_x != 0:
+                self.horizontalScrollBar().setValue(
+                    self.horizontalScrollBar().value() - delta_x
+                )
+
+            event.accept()
 
     def mousePressEvent(self, event) -> None:
         """
@@ -564,8 +591,11 @@ class MindMapView(QGraphicsView):
         Args:
             event: マウスイベント
         """
-        # 中クリックまたは右クリックでパン開始
-        if event.button() == Qt.MouseButton.MiddleButton or event.button() == Qt.MouseButton.RightButton:
+        # 中クリック、右クリック、またはSpaceキー+左クリックでパン開始
+        if (event.button() == Qt.MouseButton.MiddleButton or
+            event.button() == Qt.MouseButton.RightButton or
+            (event.button() == Qt.MouseButton.LeftButton and
+             event.modifiers() & Qt.KeyboardModifier.ShiftModifier)):
             self._is_panning = True
             self._pan_start_pos = event.pos()
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
@@ -604,7 +634,9 @@ class MindMapView(QGraphicsView):
             event: マウスイベント
         """
         # パン終了
-        if event.button() == Qt.MouseButton.MiddleButton or event.button() == Qt.MouseButton.RightButton:
+        if (event.button() == Qt.MouseButton.MiddleButton or
+            event.button() == Qt.MouseButton.RightButton or
+            event.button() == Qt.MouseButton.LeftButton):
             if self._is_panning:
                 self._is_panning = False
                 self._pan_start_pos = None
