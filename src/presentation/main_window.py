@@ -27,6 +27,16 @@ class MainWindow(QMainWindow):
         """メインウィンドウを初期化する"""
         super().__init__()
 
+        # 最近開いたファイルのリスト（_load_settings()より前に初期化が必要）
+        self._recent_files: list[str] = []
+        self._recent_files_actions: list[QAction] = []
+        self._max_recent_files = 10
+        self._recent_files_path = Path.home() / ".oyuwaku_recent_files.txt"
+
+        # ファイル履歴ログ
+        self._log_file_path = Path.home() / ".oyuwaku_file_history.log"
+        self._max_log_entries = 10
+
         # 設定
         self._settings = QSettings("OYUWAKU", "OYUWAKUApp")
         self._load_settings()
@@ -44,16 +54,6 @@ class MainWindow(QMainWindow):
         self._autosave_timer.setInterval(5000)  # 5秒
         self._autosave_timer.setSingleShot(True)  # 1回のみ実行
         self._autosave_timer.timeout.connect(self._auto_save)
-
-        # 最近開いたファイルのリスト
-        self._recent_files: list[str] = []
-        self._recent_files_actions: list[QAction] = []
-        self._max_recent_files = 10
-        self._recent_files_path = Path.home() / ".oyuwaku_recent_files.txt"
-
-        # ファイル履歴ログ
-        self._log_file_path = Path.home() / ".oyuwaku_file_history.log"
-        self._max_log_entries = 10
 
         # UI初期化
         self._setup_ui()
