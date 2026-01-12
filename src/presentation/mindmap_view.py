@@ -330,6 +330,7 @@ class MindMapView(QGraphicsView):
         # 手動配置されたノードの場合は保存された位置を使用
         if node.manual_position:
             pos = node.position
+            node_x = pos[0]  # 子ノードの配置計算のためにnode_xを設定
             node_item.setPos(pos[0], pos[1])
         else:
             # direction=-1（左）の場合は、xからノード幅を引いた位置に配置
@@ -409,6 +410,8 @@ class MindMapView(QGraphicsView):
         # 手動配置されたノードの場合は保存された位置を使用
         if node.manual_position:
             pos = node.position
+            node_x = pos[0]  # 子ノードの配置計算のためにnode_xを設定
+            node_y = pos[1]  # 子ノードの配置計算のためにnode_yを設定
             node_item.setPos(pos[0], pos[1])
         else:
             # ノードを配置（x座標を中心に配置）
