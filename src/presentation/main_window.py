@@ -47,6 +47,7 @@ class MainWindow(QMainWindow):
         self._converter = TreeToMarkdownConverter()
         self._current_file: Path | None = None
         self._updating_from_drag = False  # ドラッグ更新中フラグ
+        self._updating_from_node_click = False  # ノードクリック更新中フラグ
         self._has_unsaved_changes = False  # 未保存の変更があるかどうか
 
         # 自動保存タイマー（5秒間操作がない場合に自動保存）
@@ -235,6 +236,10 @@ class MainWindow(QMainWindow):
         Args:
             line_number: カーソルがある行番号（0始まり）
         """
+        # ノードクリックによる更新中は無視（ノードクリック側で中心表示を行う）
+        if self._updating_from_node_click:
+            return
+
         # 行番号から対応するノードを検索
         node = self._parser.get_node_by_line(line_number)
         if node is not None:
@@ -272,11 +277,20 @@ class MainWindow(QMainWindow):
         Args:
             node: クリックされたノード
         """
+        # ノードクリック更新中フラグを設定
+        self._updating_from_node_click = True
+
         # ノードから行番号を取得
         line_number = self._parser.get_line_by_node(node)
         if line_number is not None:
             # エディタのカーソルを移動
             self._editor.move_cursor_to_line(line_number)
+
+        # クリックしたノードを中心に表示
+        self._mindmap_view.center_on_node(node)
+
+        # フラグをリセット
+        self._updating_from_node_click = False
 
     def _on_forward_text_input(self, text: str) -> None:
         """
