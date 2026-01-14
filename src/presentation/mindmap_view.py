@@ -4,7 +4,7 @@
 右ペインのマインドマップ表示エリア
 """
 from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPathItem
-from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPointF, QEvent
+from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPointF, QEvent, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QPainterPath, QImage
 from PyQt6.QtWidgets import QPinchGesture
 from typing import Optional, Dict, Tuple, List
@@ -58,6 +58,15 @@ class MindMapView(QGraphicsView):
         # パン（移動）管理
         self._is_panning = False
         self._pan_start_pos = None
+
+        # スムーズスクロール用アニメーション
+        self._scroll_animation_h = QPropertyAnimation(self.horizontalScrollBar(), b"value")
+        self._scroll_animation_h.setDuration(500)  # 500ミリ秒
+        self._scroll_animation_h.setEasingCurve(QEasingCurve.Type.InOutCubic)
+
+        self._scroll_animation_v = QPropertyAnimation(self.verticalScrollBar(), b"value")
+        self._scroll_animation_v.setDuration(500)  # 500ミリ秒
+        self._scroll_animation_v.setEasingCurve(QEasingCurve.Type.InOutCubic)
 
     def _setup_ui(self) -> None:
         """UIをセットアップする"""
@@ -868,8 +877,39 @@ class MindMapView(QGraphicsView):
         center_x = node_pos.x() + node_rect.width() / 2
         center_y = node_pos.y() + node_rect.height() / 2
 
-        # ビューの中心をノードの中心に移動
-        self.centerOn(center_x, center_y)
+        # スムーズスクロールでビューの中心をノードの中心に移動
+        self._animate_center_on(center_x, center_y)
+
+    def _animate_center_on(self, scene_x: float, scene_y: float) -> None:
+        """
+        スムーズアニメーションでビューの中心を指定座標に移動
+
+        Args:
+            scene_x: シーン座標のX位置
+            scene_y: シーン座標のY位置
+        """
+        # ターゲット座標をビュー座標に変換
+        target_point = self.mapFromScene(scene_x, scene_y)
+
+        # ビューポートの中心座標
+        viewport_center_x = self.viewport().width() / 2
+        viewport_center_y = self.viewport().height() / 2
+
+        # スクロールバーの目標値を計算
+        target_h = self.horizontalScrollBar().value() + target_point.x() - viewport_center_x
+        target_v = self.verticalScrollBar().value() + target_point.y() - viewport_center_y
+
+        # 水平スクロールアニメーション
+        self._scroll_animation_h.stop()
+        self._scroll_animation_h.setStartValue(self.horizontalScrollBar().value())
+        self._scroll_animation_h.setEndValue(int(target_h))
+        self._scroll_animation_h.start()
+
+        # 垂直スクロールアニメーション
+        self._scroll_animation_v.stop()
+        self._scroll_animation_v.setStartValue(self.verticalScrollBar().value())
+        self._scroll_animation_v.setEndValue(int(target_v))
+        self._scroll_animation_v.start()
 
     def export_to_png(self, file_path: str) -> bool:
         """
