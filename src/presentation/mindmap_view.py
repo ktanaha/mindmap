@@ -555,8 +555,8 @@ class MindMapView(QGraphicsView):
         # ビューを再描画
         self.display_tree(self._root_node)
 
-        # ドロップされたノードを中心に表示
-        self.center_on_node(dropped_node)
+        # ドロップ先のノードを中心に表示
+        self.center_on_node(target_node)
 
         # 変更をシグナルで通知
         self.node_reparented.emit(dropped_node, target_node)
