@@ -153,6 +153,8 @@ class NodeItem(QGraphicsObject):
 
             # ドロップ先候補を検出（ノードは動かさない）
             self._update_hover_target(event.scenePos())
+            # ドラッグ中はノード本体を動かさない（接続線の残像を防ぐため）
+            return
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event) -> None:
