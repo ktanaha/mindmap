@@ -262,6 +262,9 @@ class MainWindow(QMainWindow):
         # フラグをリセット
         self._updating_from_drag = False
 
+        # ドロップ先のノードを中心に表示
+        self._mindmap_view.center_on_node(target_node)
+
     def _on_node_clicked(self, node: Node) -> None:
         """
         マインドマップのノードがクリックされたときの処理
