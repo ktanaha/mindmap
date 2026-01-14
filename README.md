@@ -147,13 +147,22 @@ mindmap/
 pytest
 ```
 
-### 開発ガイドライン
+## ドキュメント
 
-詳細な開発ガイドラインは以下のドキュメントを参照してください：
+### ユーザー向けドキュメント
+- [FEATURES.md](FEATURES.md) - 機能一覧
+- [HELP.md](HELP.md) - ヘルプドキュメント
 
-- [CLAUDE.md](CLAUDE.md) - 開発方針全般
-- [CLAUDE_TDD.md](CLAUDE_TDD.md) - TDDとテスト戦略
+### 開発者向けドキュメント
 - [REQUIREMENTS.md](REQUIREMENTS.md) - 要件定義書
+- [docs/](docs/) - Claude開発ガイドライン
+  - [CLAUDE.md](docs/CLAUDE.md) - 開発方針全般
+  - [CLAUDE_TDD.md](docs/CLAUDE_TDD.md) - TDDとテスト戦略
+  - [CLAUDE_GIT.md](docs/CLAUDE_GIT.md) - Git管理・バージョン管理
+  - [CLAUDE_CICD.md](docs/CLAUDE_CICD.md) - CI/CD設定
+  - [CLAUDE_SECURITY.md](docs/CLAUDE_SECURITY.md) - セキュリティ・安全性ルール
+  - [CLAUDE_LOGGER.md](docs/CLAUDE_LOGGER.md) - vibe-coding-logger統合ガイド
+  - [CLAUDE_BACKLOG.md](docs/CLAUDE_BACKLOG.md) - プロダクトバックログ管理
 
 ## 技術スタック
 
