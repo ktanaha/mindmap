@@ -34,6 +34,7 @@ class NodeItem(QGraphicsObject):
         self._depth = depth
         self._is_dragging = False
         self._drag_start_pos = None
+        self._drag_start_item_pos = None  # ドラッグ開始時のアイテムの位置
         self._hover_target: Optional['NodeItem'] = None
         self._ghost_text: Optional[QGraphicsTextItem] = None
         self._ghost_underline: Optional[QGraphicsLineItem] = None
@@ -135,6 +136,7 @@ class NodeItem(QGraphicsObject):
         if event.button() == Qt.MouseButton.LeftButton:
             self._is_dragging = True
             self._drag_start_pos = event.scenePos()
+            self._drag_start_item_pos = self.pos()  # アイテムの元の位置を保存
             self.setOpacity(0.7)  # 半透明化
 
             # ゴーストアイテム（カーソルに追従する半透明テキスト）を作成
@@ -184,7 +186,10 @@ class NodeItem(QGraphicsObject):
                 if self._drag_start_pos is not None:
                     current_pos = event.scenePos()
                     drag_distance = (current_pos - self._drag_start_pos).manhattanLength()
-                    if drag_distance <= 5:  # ほとんど移動していない場合は選択状態をトグル
+                    if drag_distance > 5:  # ドラッグした場合は元の位置に戻す
+                        if self._drag_start_item_pos is not None:
+                            self.setPos(self._drag_start_item_pos)
+                    else:  # ほとんど移動していない場合は選択状態をトグル
                         self.set_selected(not self._is_selected)
                         self.node_selected.emit(self)
                 else:
