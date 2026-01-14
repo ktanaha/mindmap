@@ -552,8 +552,11 @@ class MindMapView(QGraphicsView):
             dropped_node.parent.remove_child(dropped_node)
         target_node.add_child(dropped_node)
 
-        # ビューを再描画（ドロップ時に保存された位置が使用される）
+        # ビューを再描画
         self.display_tree(self._root_node)
+
+        # ドロップされたノードを中心に表示
+        self.center_on_node(dropped_node)
 
         # 変更をシグナルで通知
         self.node_reparented.emit(dropped_node, target_node)
